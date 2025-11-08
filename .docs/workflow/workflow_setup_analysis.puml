@@ -1,0 +1,35 @@
+@startuml
+' Sequence: Author creates and publishes a questionnaire version with trait mappings
+
+actor "Content Ops" as Admin
+participant "Authoring UI" as Authoring
+participant "API (tRPC)" as API
+database "DB (Turso)" as DB
+
+== Authoring questions ==
+Admin -> Authoring : Draft/update question copy
+Authoring -> API : upsertQuestion(code, prompt, type, config)
+API -> DB : UPSERT question_bank_item
+loop For choice questions
+  Authoring -> API : upsertOption(question_id, label, value, position)
+  API -> DB : UPSERT question_option
+end
+
+== Assemble questionnaire version ==
+Admin -> Authoring : Define section order & overrides
+Authoring -> API : createQuestionnaireVersion(questionnaire_id, items[])
+API -> DB : INSERT questionnaire_version\nINSERT questionnaire_item rows
+
+== Wire trait mappings ==
+Admin -> Authoring : Assign weights per answer
+Authoring -> API : upsertQuestionTraitMapping(question_id, option_id, rule, weight)
+API -> DB : UPSERT question_trait_mapping
+
+== Publish ==
+Authoring -> API : activateQuestionnaireVersion(version_id)
+API -> DB : UPDATE questionnaire_version(is_active=true, published_at=now)
+API -> DB : UPDATE questionnaire(default_analysis_model_id?) when needed
+API --> Authoring : confirmation payload
+Authoring --> Admin : Show publish success & version diff
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+' Sequence: LLM benchmark runs multiple sessions and (optionally) produces persisted averages
+
+actor "Benchmark Orchestrator" as Orchestrator
+participant "API (tRPC)" as API
+database "DB (Turso)" as DB
+participant "Scoring Worker" as Worker
+
+== Subject setup ==
+Orchestrator -> API : ensureSubjectProfile(model="gpt-4o")
+API -> DB : UPSERT subject_profile(subject_type="agent")
+DB --> API : subject_profile_id
+
+== Loop through N runs (Phase 0) ==
+loop For each run in N
+  Orchestrator -> API : createAssessmentSession(subject_profile_id, questionnaire_version_id)
+  API -> DB : INSERT assessment_session(status="started")
+  Orchestrator -> API : submitResponses(session_id, answers_payload)
+  API -> DB : BULK UPSERT response rows
+  API -> DB : UPDATE assessment_session(status="completed")
+  API -> Worker : enqueueScoreJob(session_id)
+end
+
+== Aggregated view (Phase 0) ==
+API -> DB : SELECT avg(trait_score)\nFROM analysis_run JOIN trait_score\nWHERE subject_profile_id = ?
+DB --> API : averaged trait metrics (view)
+API --> Orchestrator : aggregated score payload
+
+== Optional snapshot (Phase 1+) ==
+opt Persist averages
+  Orchestrator -> API : createAssessmentBatch(subject_profile_id, questionnaire_version_id, run_count=N)
+  API -> DB : INSERT assessment_batch(status="pending")
+  Worker -> DB : INSERT analysis_run(assessment_batch_id, status="processing")
+  Worker -> DB : INSERT trait_score(computed averages)
+  Worker -> DB : UPDATE assessment_batch(run_count=N, completed_at, aggregation_method)
+  Worker -> DB : UPDATE analysis_run(status="completed")
+end
+
+@enduml

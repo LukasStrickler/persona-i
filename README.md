@@ -1,29 +1,179 @@
-# Create T3 App
+# Persona[i] - Personality Benchmark Platform
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+> **Note**: This project is under active development. Features and documentation may change.
 
-## What's next? How do I make an app with this?
+## Overview
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+Persona[i] is a personality benchmarking platform that hosts personality questionnaires. Users take comprehensive personality assessments and receive detailed evaluations. The platform compares these evaluations with various LLM models (GPT, Claude, Gemini, etc.) to identify which AI personality profile most closely matches the user's own.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+### Features
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+- **Personality Test** - Complete personality assessments with detailed results
+- **AI Model Comparison** - Compare your personality with various LLM models
+- **Model Benchmarking** - Benchmark LLM models against each other
 
-## Learn More
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+### Tech Stack
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+- **[TypeScript](https://www.typescriptlang.org)** - Type-safe JavaScript
+- **[Bun](https://bun.sh)** - Fast JavaScript runtime and package manager
+- **[Next.js 16](https://nextjs.org)** - React framework with App Router
+- **[React 19](https://react.dev)** - UI library
+- **[tRPC](https://trpc.io)** - End-to-end typesafe APIs
+- **[Tailwind CSS](https://tailwindcss.com)** - Utility-first CSS framework
+- **[Shadcn/UI](https://ui.shadcn.com)** - Accessible UI component primitives
+- **[Zod](https://zod.dev)** - TypeScript-first schema validation
+- **[BetterAuth](https://www.better-auth.com)** - Authentication with magic link support
+- **[Drizzle ORM](https://orm.drizzle.team)** - Type-safe ORM for database operations
+- **[Turso/LibSQL](https://turso.tech)** - Edge database with SQLite compatibility
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+---
 
-## How do I deploy this?
+## Project Structure
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+```
+persona-i/
+├── .docs/                     # Documentation
+│   ├── api/                   # API documentation
+│   ├── db/                    # Database documentation
+│   ├── workflow/              # Workflow diagrams
+│   └── DOCUMENTATION_GUIDE.md # Documentation guidelines
+├── public/                    # Static assets
+├── scripts/                   # Helper scripts
+├── src/
+│   ├── app/                   # Next.js application pages
+│   │   ├── (shared-background)/
+│   │   │   ├── account/       
+│   │   │   ├── auth/          
+│   │   │   └── login/         
+│   │   ├── api/               # API configuration
+│   │   └── layout.tsx         
+│   ├── components/            # React components
+│   │   ├── auth/              
+│   │   ├── landing/           
+│   │   ├── providers/         
+│   │   └── ui/                
+│   ├── emails/                # Email templates
+│   ├── hooks/                 
+│   ├── lib/                   # Utility libraries
+│   ├── server/                # Server-side code
+│   │   ├── api/               # tRPC API configuration
+│   │   │   ├── routers/       
+│   │   │   └── trpc.ts        
+│   │   └── db/                # Database schema
+│   └── styles/                # Global styles
+├── LICENSE                    
+└── package.json               # Dependencies and scripts
+```
+
+## Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh) (recommended) or Node.js 18+
+- [Turso](https://turso.tech) account for database
+- [Resend](https://resend.com) account for email functionality (optional for development)
+
+### Quick Start
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/personai-review/persona-i.git
+cd persona-i
+```
+
+2. **Install dependencies**
+
+```bash
+bun install
+```
+
+3. **Set up environment variables**
+
+Create a `.env` file in the project root (see [Environment Variables](#environment-variables) below).
+
+```bash
+cp .env.example .env
+```
+
+4. **Set up the database**
+
+Run the database setup script to create the database and generate login links for test users.
+
+```bash
+bun run db:setup
+```
+
+### Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+#### Required for Local Development
+
+- **`DATABASE_URL`** - Your database URL (e.g., `libsql://your-database-url` for Turso or `file:./db.sqlite` for local SQLite)
+- **`BETTER_AUTH_SECRET`** - A random secret for BetterAuth (minimum 32 characters). Generate with: `openssl rand -base64 32`
+- **`NODE_ENV`** - Environment mode (`development`, `test`, or `production`)
+
+#### Optional / Feature-specific
+
+- **`DATABASE_TOKEN`** - Your Turso database authentication token (only required for remote Turso databases, not needed for local file-based databases)
+- **`BETTER_AUTH_URL`** - Your application URL (optional, defaults to `http://localhost:3000` for development)
+- **`NEXT_PUBLIC_BETTER_AUTH_URL`** - Public-facing BetterAuth URL (optional, defaults to `http://localhost:3000` for development, same as `BETTER_AUTH_URL` for development)
+- **`NEXT_PUBLIC_SITE_URL`** - Public-facing site URL for sitemap generation (optional, defaults to `http://localhost:3000` for development, `https://personai.review` for production)
+- **`RESEND_API_KEY`** - Your Resend API key for sending magic link emails (only required if using email magic-link functionality)
+- **`RESEND_FROM`** - The email address to send magic links from, must be verified in Resend (only required if using email magic-link functionality)
+- **`HCAPTCHA_SECRET_KEY`** - hCaptcha secret key for contact form verification (optional, contact form will skip verification in development if not set)
+- **`NEXT_PUBLIC_HCAPTCHA_SITE_KEY`** - hCaptcha site key for contact form (optional, contact form will skip verification in development if not set)
+- **`CONTACT_EMAIL`** - Email address to receive contact form submissions (optional, contact form will log submissions in development if not set)
+
+See [.env.example](.env.example) for a template.
+
+5. **Start the development server**
+
+```bash
+bun run dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+---
+
+## Resources
+
+### Documentation
+
+- **[API Documentation](./.docs/api/)** - API endpoints and authentication flow
+- **[Database Documentation](./.docs/db/)** - Database schema and structure
+- **[Workflow Diagrams](./.docs/workflow/)** - Process workflows and sequences
+
+### Quick Reference
+
+| Command                  | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| `bun run dev`            | Start development server                         |
+| `bun run build`          | Build for production                             |
+| `bun run start`          | Start production server                          |
+| `bun run db:setup`       | Setup database with mock data                    |
+| `bun run typecheck`      | TypeScript type checking                         |
+| `bun run lint`           | ESLint linting                                   |
+| `bun run format:write`   | Format code with Prettier                        |
+| `bun run agent:finalize` | Run all quality checks (typecheck, lint, format) |
+| `bun run docs:check`     | Check documentation updates needed               |
+| `bun run review:task`    | Review uncommitted changes                       |
+| `bun run review:pr`      | Review PR changes                                |
+
+---
+
+## License
+
+This project is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+
+- **Non-production use**: You may copy, modify, create derivative works, redistribute, and make non-production use of the Licensed Work.
+- **Change Date**: Four years from the date the respective version of the Licensed Work is published.
+- **Change License**: After the Change Date, the license will change to **GNU GPLv3**.
+- **Commercial Use**: For production/commercial use, you must purchase a commercial license or refrain from using the Licensed Work.
+
+See [LICENSE](./LICENSE) for the complete license text.
+
+For information about alternative licensing arrangements, please contact: [https://lukasstrickler.com](https://lukasstrickler.com)

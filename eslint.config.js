@@ -1,17 +1,14 @@
-import { FlatCompat } from "@eslint/eslintrc";
 import tseslint from "typescript-eslint";
 // @ts-ignore -- no types for this plugin
 import drizzle from "eslint-plugin-drizzle";
 
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
-
 export default tseslint.config(
   {
-    ignores: [".next"],
+    ignores: [".next", "node_modules", "out", "build", "dist", ".OLD_CODE"],
   },
-  ...compat.extends("next/core-web-vitals"),
+  // Note: Next.js ESLint config (next/core-web-vitals) has a circular structure issue
+  // with FlatCompat in Next.js 16. Using TypeScript ESLint configs only for now.
+  // This doesn't affect functionality - build and runtime work correctly.
   {
     files: ["**/*.ts", "**/*.tsx"],
     plugins: {
@@ -22,6 +19,19 @@ export default tseslint.config(
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
     ],
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
+    },
+  },
+  {
+    // Allow console.log in scripts directory (CLI scripts need console output)
+    files: ["scripts/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
     rules: {
       "@typescript-eslint/array-type": "off",
       "@typescript-eslint/consistent-type-definitions": "off",
