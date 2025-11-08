@@ -25,8 +25,7 @@ export const contactBaseSchema = z.object({
     .string()
     .regex(/^[\d\s\-\+\(\)]*$/, "Please enter a valid phone number")
     .max(20, "Phone number must be at most 20 characters")
-    .optional()
-    .or(z.literal("")),
+    .optional(),
   message: z
     .string()
     .transform((s) => s.trim())

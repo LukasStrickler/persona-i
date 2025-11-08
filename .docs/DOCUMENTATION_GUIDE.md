@@ -12,7 +12,7 @@
 
 ## Audience
 
-**Know your audience:**
+#### Know your audience:
 - **Developers**: Technical details, API references, architecture, setup procedures
 - **Users**: How-to guides, feature descriptions, troubleshooting
 - **Contributors**: Contribution guidelines, development workflow, code standards
@@ -25,7 +25,7 @@ Write for your primary audience, but make it accessible. Use clear language and 
 
 **Note:** Documentation should always be in `.docs/` directory at the repository root.
 
-```
+```text
 project-root/
 ├── README.md                    # Project overview, features, tech stack, quick start
 ├── SETUP.md                     # Detailed setup instructions, configuration, environment variables
@@ -65,12 +65,13 @@ project-root/
 
 ### Subdirectory README Files
 
-**Add README.md in subdirectories when:**
+#### Add README.md in subdirectories when:
 - ✅ Subdirectory has multiple related files
 - ✅ You want to provide an overview or quick reference
 - ✅ The subdirectory is a major documentation section
 
-**Skip when:** Subdirectory has only one or two files, or purpose is obvious from file names.
+#### Skip when:
+Subdirectory has only one or two files, or purpose is obvious from file names.
 
 **Example: `.docs/db/README.md`**
 ```markdown
@@ -156,15 +157,19 @@ User ||--o{ Post : "owns"
 
 ### Decision: Embed vs Separate File
 
-**Embed Mermaid in markdown when:** Diagram provides real value and is relevant to the document, even if complex. Good for overviews, workflows, and visual summaries that enhance understanding.
+#### Embed Mermaid in markdown when:
+Diagram provides real value and is relevant to the document, even if complex. Good for overviews, workflows, and visual summaries that enhance understanding.
 
-**Use separate `.puml` file (PlantUML) when:** Diagram is referenced from multiple documents, part of a collection, or needs to be version controlled separately.
+#### Use separate `.puml` file (PlantUML) when:
+Diagram is referenced from multiple documents, part of a collection, or needs to be version controlled separately.
 
 ## Code Comments vs Documentation
 
-**Use code comments for:** Explaining "why" implementation choices, complex algorithms, workarounds, non-obvious behavior.
+#### Use code comments for:
+Explaining "why" implementation choices, complex algorithms, workarounds, non-obvious behavior.
 
-**Use documentation for:** High-level architecture, API endpoints, setup procedures, workflows, user-facing features.
+#### Use documentation for:
+High-level architecture, API endpoints, setup procedures, workflows, user-facing features.
 
 **Example: Code Comment**
 ```typescript
@@ -228,7 +233,7 @@ The database is complex and uses an ORM for queries...
 
 `POST /api/posts`
 
-**Request:**
+#### Request:
 ```json
 {
   "title": "My Post",
@@ -236,7 +241,7 @@ The database is complex and uses an ORM for queries...
 }
 ```
 
-**Response:**
+#### Response:
 ```json
 {
   "id": "uuid",
@@ -245,7 +250,7 @@ The database is complex and uses an ORM for queries...
 }
 ```
 
-**Errors:**
+#### Errors:
 - `400 Bad Request` - Invalid title or content
 - `401 Unauthorized` - Missing or invalid authentication
 ```
@@ -253,7 +258,7 @@ The database is complex and uses an ORM for queries...
 
 ## Docs-as-Code Approach
 
-**Best practices:**
+#### Best practices:
 - ✅ Store documentation in version control (Git)
 - ✅ Update docs in the same PR as code changes
 - ✅ Review documentation changes in code reviews
@@ -262,7 +267,7 @@ The database is complex and uses an ORM for queries...
 - ✅ Commit documentation changes with related code changes
 - ✅ Use descriptive commit messages: `docs: update API endpoint documentation`
 
-**Regular maintenance:**
+#### Regular maintenance:
 - Review documentation quarterly or after major releases
 - Verify all links still work
 - Update examples to match current code
@@ -270,14 +275,14 @@ The database is complex and uses an ORM for queries...
 
 ## Consistency and Style
 
-**Maintain consistency:**
+#### Maintain consistency:
 - ✅ Use consistent terminology across all docs
 - ✅ Follow the same structure for similar documentation types
 - ✅ Use consistent formatting (headings, code blocks, lists)
 
 ## Discoverability and Cross-Referencing
 
-**Make documentation discoverable:**
+#### Make documentation discoverable:
 - ✅ Use clear, descriptive file names
 - ✅ Add cross-references between related documents
 - ✅ Link from README to relevant documentation sections
@@ -315,22 +320,22 @@ Before creating a PR:
 
 ### Common Tasks
 
-**Adding a new feature:**
+#### Adding a new feature:
 1. Update README with feature description
 2. Add API docs if it exposes new endpoints
 3. Create workflow diagram if process is complex
 
-**Changing database schema:**
+#### Changing database schema:
 1. Update schema documentation
 2. Update ER diagram (`.puml` file for PlantUML, or inline Mermaid)
 3. Update migration documentation if process changed
 
-**Modifying API:**
+#### Modifying API:
 1. Update API documentation
 2. Update workflow diagrams if flows changed
 3. Document breaking changes prominently
 
-**Adding new documentation section:**
+#### Adding new documentation section:
 1. Create subdirectory in `.docs/`
 2. Add README.md if section has multiple files
 3. Link to new section from main README

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useRef } from "react";
+import { type ClipboardEvent, useRef } from "react";
 
 interface LogoProps {
   className?: string;
@@ -21,7 +21,7 @@ export function Logo({ className, variant = "default" }: LogoProps) {
         : "text-4xl sm:text-5xl md:text-6xl";
   const containerRef = useRef<HTMLHeadingElement>(null);
 
-  const handleCopy = (e: React.ClipboardEvent) => {
+  const handleCopy = (e: ClipboardEvent<HTMLHeadingElement>) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 

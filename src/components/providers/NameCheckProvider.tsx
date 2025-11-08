@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { NameCollectionPrompt } from "@/components/auth/NameCollectionPrompt";
@@ -9,9 +9,16 @@ export function NameCheckProvider({ children }: { children: React.ReactNode }) {
   const [showPrompt, setShowPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const pathname = usePathname();
+  const justSubmittedRef = useRef(false);
 
   // Check session on mount and whenever pathname changes
   useEffect(() => {
+    // Skip check if we just successfully submitted (prevent race condition)
+    if (justSubmittedRef.current) {
+      justSubmittedRef.current = false;
+      return;
+    }
+
     const checkSession = async () => {
       try {
         const response = await authClient.getSession();
@@ -34,11 +41,13 @@ export function NameCheckProvider({ children }: { children: React.ReactNode }) {
         } else {
           // No user session, close prompt
           setShowPrompt(false);
+          setUserEmail("");
         }
       } catch (error) {
         console.error("Error checking session:", error);
         // On error, don't show prompt
         setShowPrompt(false);
+        setUserEmail("");
       }
     };
 
@@ -47,6 +56,9 @@ export function NameCheckProvider({ children }: { children: React.ReactNode }) {
 
   const handleSuccess = async () => {
     try {
+      // Mark that we just successfully submitted to prevent race condition
+      justSubmittedRef.current = true;
+
       // Reload the session to get updated user data
       const response = await authClient.getSession();
       const user = response.data?.user;
@@ -61,6 +73,7 @@ export function NameCheckProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error fetching session after name update:", error);
       // Don't close prompt on error, let user retry
+      justSubmittedRef.current = false;
     }
   };
 

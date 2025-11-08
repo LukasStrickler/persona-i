@@ -96,6 +96,19 @@ function generateSecret(): string | null {
 }
 
 export function ContactForm({ siteKey }: ContactFormProps) {
+  // Validate siteKey - show error if missing
+  if (!siteKey || siteKey.trim() === "") {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Configuration Error</AlertTitle>
+        <AlertDescription>
+          hCaptcha site key is missing. Please contact the site administrator.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   const [secret, setSecret] = React.useState<string | null>(null);
   const [submission, setSubmission] = React.useState<SubmissionState>({
     status: "idle",
@@ -117,7 +130,7 @@ export function ContactForm({ siteKey }: ContactFormProps) {
     defaultValues: {
       name: "",
       email: "",
-      phone: "",
+      phone: undefined,
       message: "",
       consent: false,
       [honeypotFieldName]: "",

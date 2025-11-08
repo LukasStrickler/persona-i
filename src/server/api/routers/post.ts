@@ -12,6 +12,10 @@ export const postRouter = createTRPCRouter({
       };
     }),
 
+  // NOTE: This is a demo endpoint. In production, add:
+  // - Rate limiting to prevent spam/abuse
+  // - Authentication if posts should be user-specific
+  // - Input validation/sanitization beyond basic Zod schema
   create: publicProcedure
     .input(z.object({ name: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {

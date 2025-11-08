@@ -121,21 +121,30 @@ export function Audiences() {
                     Coming soon
                   </Badge>
                 )}
-                {isIndividual && (
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                    disabled={isLoading}
-                    aria-busy={isLoading}
-                    aria-label={isLoading ? "Loading..." : undefined}
-                  >
-                    <Link href={isAuthenticated ? "/tests" : "/login"}>
-                      {isAuthenticated ? "Tests" : "Sign in / Create account"}
-                    </Link>
-                  </Button>
-                )}
+                {isIndividual &&
+                  (isLoading ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                      disabled
+                      aria-busy
+                      aria-label="Loading..."
+                    >
+                      Loading...
+                    </Button>
+                  ) : (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                    >
+                      <Link href={isAuthenticated ? "/tests" : "/login"}>
+                        {isAuthenticated ? "Tests" : "Sign in / Create account"}
+                      </Link>
+                    </Button>
+                  ))}
                 {isResearcher && audience.href && (
                   <Button
                     asChild

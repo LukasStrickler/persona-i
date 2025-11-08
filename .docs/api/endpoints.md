@@ -29,7 +29,7 @@ Update the authenticated user's name.
 ```
 
 **Request Headers**:
-```
+```text
 Content-Type: application/json
 Cookie: better-auth.session_token=...
 ```
@@ -93,7 +93,7 @@ Permanently delete the authenticated user's account and all associated data.
 ```
 
 **Request Headers**:
-```
+```text
 Content-Type: application/json
 Cookie: better-auth.session_token=...
 ```

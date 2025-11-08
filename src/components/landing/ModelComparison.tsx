@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/chart";
 import { ExternalLink, Sparkles, Award } from "lucide-react";
 
+// Mock/demo DISC data for model comparison visualization
+// Note: Model names and scores are for demonstration purposes only
 // Order: Best fitting first (Gemini), then Deepseek, GPT-5, Claude
 // This order matches the grid layout: [Fits you best (2-col)] [Gemini] | [Deepseek] [GPT-5] [Claude]
 const discData = [
@@ -53,6 +55,60 @@ const similarityRanking = [
   { model: "GPT-5 High", similarity: 72 },
   { model: "Claude Sonnet 4.5", similarity: 66 },
 ];
+
+// Shared component for ranking items (mobile and desktop)
+function RankingItem({
+  item,
+  index,
+}: {
+  item: (typeof similarityRanking)[number];
+  index: number;
+}) {
+  const modelData = discData.find((m) => m.model === item.model);
+  const descriptions = [
+    "Strong match across all dimensions",
+    "High compatibility with your profile",
+    "Good alignment with key traits",
+    "Moderate similarity overall",
+  ];
+
+  return (
+    <div className="border-primary/10 bg-background/50 hover:border-primary/20 hover:bg-background/70 flex flex-col gap-3 rounded-lg border p-4 transition-all duration-200">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="bg-primary text-primary-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-md">
+            {index + 1}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm leading-tight font-semibold">
+              {item.model}
+            </div>
+            {modelData && (
+              <div className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                {descriptions[index]}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end">
+          <span className="text-primary text-xl font-bold">
+            {item.similarity}%
+          </span>
+          <span className="text-muted-foreground text-xs">match</span>
+        </div>
+      </div>
+      <div className="space-y-0">
+        <div className="bg-muted relative h-3 w-full overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full transition-all duration-700 ease-out"
+            style={{ width: `${item.similarity}%` }}
+            aria-label={`${item.model} similarity: ${item.similarity}%`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const discDimensions = [
   {
@@ -196,113 +252,23 @@ export function ModelComparison() {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-x-5 md:gap-y-5">
                       {/* Mobile: Show top 3, Desktop: Show all 4 */}
                       <div className="contents md:hidden">
-                        {similarityRanking.slice(0, 3).map((item, index) => {
-                          const modelData = discData.find(
-                            (m) => m.model === item.model,
-                          );
-                          return (
-                            <div
-                              key={item.model}
-                              className="border-primary/10 bg-background/50 hover:border-primary/20 hover:bg-background/70 flex flex-col gap-3 rounded-lg border p-4 transition-all duration-200"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex min-w-0 flex-1 items-center gap-3">
-                                  <div className="bg-primary text-primary-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-md">
-                                    {index + 1}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="text-sm leading-tight font-semibold">
-                                      {item.model}
-                                    </div>
-                                    {modelData && (
-                                      <div className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                                        {index === 0 &&
-                                          "Strong match across all dimensions"}
-                                        {index === 1 &&
-                                          "High compatibility with your profile"}
-                                        {index === 2 &&
-                                          "Good alignment with key traits"}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex shrink-0 flex-col items-end">
-                                  <span className="text-primary text-xl font-bold">
-                                    {item.similarity}%
-                                  </span>
-                                  <span className="text-muted-foreground text-xs">
-                                    match
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="space-y-0">
-                                <div className="bg-muted relative h-3 w-full overflow-hidden rounded-full">
-                                  <div
-                                    className="bg-primary h-full transition-all duration-700 ease-out"
-                                    style={{ width: `${item.similarity}%` }}
-                                    aria-label={`${item.model} similarity: ${item.similarity}%`}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {similarityRanking.slice(0, 3).map((item, index) => (
+                          <RankingItem
+                            key={item.model}
+                            item={item}
+                            index={index}
+                          />
+                        ))}
                       </div>
                       {/* Desktop: Show all 4 */}
                       <div className="hidden md:contents">
-                        {similarityRanking.map((item, index) => {
-                          const modelData = discData.find(
-                            (m) => m.model === item.model,
-                          );
-                          return (
-                            <div
-                              key={item.model}
-                              className="border-primary/10 bg-background/50 hover:border-primary/20 hover:bg-background/70 flex flex-col gap-3 rounded-lg border p-4 transition-all duration-200"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex min-w-0 flex-1 items-center gap-3">
-                                  <div className="bg-primary text-primary-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-md">
-                                    {index + 1}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="text-sm leading-tight font-semibold">
-                                      {item.model}
-                                    </div>
-                                    {modelData && (
-                                      <div className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                                        {index === 0 &&
-                                          "Strong match across all dimensions"}
-                                        {index === 1 &&
-                                          "High compatibility with your profile"}
-                                        {index === 2 &&
-                                          "Good alignment with key traits"}
-                                        {index === 3 &&
-                                          "Moderate similarity overall"}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex shrink-0 flex-col items-end">
-                                  <span className="text-primary text-xl font-bold">
-                                    {item.similarity}%
-                                  </span>
-                                  <span className="text-muted-foreground text-xs">
-                                    match
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="space-y-0">
-                                <div className="bg-muted relative h-3 w-full overflow-hidden rounded-full">
-                                  <div
-                                    className="bg-primary h-full transition-all duration-700 ease-out"
-                                    style={{ width: `${item.similarity}%` }}
-                                    aria-label={`${item.model} similarity: ${item.similarity}%`}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {similarityRanking.map((item, index) => (
+                          <RankingItem
+                            key={item.model}
+                            item={item}
+                            index={index}
+                          />
+                        ))}
                       </div>
                     </div>
                   </CardContent>

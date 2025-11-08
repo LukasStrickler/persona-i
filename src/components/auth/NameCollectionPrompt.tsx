@@ -41,7 +41,7 @@ const nameSchema = z.object({
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name must be at most 50 characters")
     .regex(
-      /^[a-zA-Z0-9\s'-]+$/,
+      /^[\p{L}\p{M}0-9\s'-]+$/u,
       "Name can only contain letters, numbers, spaces, hyphens, and apostrophes",
     ),
 });

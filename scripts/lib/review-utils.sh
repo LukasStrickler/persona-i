@@ -106,6 +106,12 @@ find_review_files() {
 # Usage: get_numeric_count <count_string>
 get_numeric_count() {
   local count="$1"
-  echo "$count" | tr -d ' \n' || echo "0"
+  local sanitized
+  sanitized=$(printf "%s" "$count" | tr -d ' \n')
+  if [ -z "$sanitized" ]; then
+    echo "0"
+  else
+    echo "$sanitized"
+  fi
 }
 

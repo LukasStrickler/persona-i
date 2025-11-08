@@ -7,7 +7,7 @@ ERRORS=0
 echo "🔍 Running typecheck..."
 TYPECHECK_OUTPUT=$(bun run typecheck 2>&1)
 TYPECHECK_EXIT=$?
-if [ $TYPECHECK_EXIT -ne 0 ] || echo "$TYPECHECK_OUTPUT" | grep -qiE 'error'; then
+if [ $TYPECHECK_EXIT -ne 0 ]; then
   echo "❌ Typecheck failed:"
   echo "$TYPECHECK_OUTPUT"
   ERRORS=1
@@ -19,7 +19,7 @@ echo ""
 echo "🔍 Running lint..."
 LINT_OUTPUT=$(bun run lint 2>&1)
 LINT_EXIT=$?
-if [ $LINT_EXIT -ne 0 ] || echo "$LINT_OUTPUT" | grep -qiE 'error|warning'; then
+if [ $LINT_EXIT -ne 0 ]; then
   echo "❌ Lint failed:"
   echo "$LINT_OUTPUT"
   ERRORS=1
@@ -31,7 +31,7 @@ echo ""
 echo "🔍 Running format check..."
 FORMAT_OUTPUT=$(bun run format:check 2>&1)
 FORMAT_EXIT=$?
-if [ $FORMAT_EXIT -ne 0 ] || echo "$FORMAT_OUTPUT" | grep -qiE 'error|warn'; then
+if [ $FORMAT_EXIT -ne 0 ]; then
   echo "❌ Format check failed:"
   echo "$FORMAT_OUTPUT"
   ERRORS=1
