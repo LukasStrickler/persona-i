@@ -9,7 +9,7 @@ const footerLinks = {
     { label: "Benchmarks", href: "/benchmarks" },
   ],
   resources: [
-    { label: "Documentation", href: "/docs" },
+    { label: "Documentation", href: "/documentation" },
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
   ],

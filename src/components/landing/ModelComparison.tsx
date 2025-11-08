@@ -489,7 +489,7 @@ export function ModelComparison() {
                       understand their behavioral patterns.
                     </p>
                     <Link
-                      href="/docs"
+                      href="/documentation"
                       className="text-primary hover:text-primary/80 mt-2 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
                     >
                       Learn more about our comparison methods

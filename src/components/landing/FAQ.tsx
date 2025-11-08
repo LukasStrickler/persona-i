@@ -76,7 +76,7 @@ const faqs = [
         with how AI models respond to the same questions. Our similarity
         calculations follow established assessment methods and are fully
         transparent.{" "}
-        <Link href="/docs" className="text-primary hover:underline">
+        <Link href="/documentation" className="text-primary hover:underline">
           Learn more about our methodology in our documentation
         </Link>
         .

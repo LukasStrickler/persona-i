@@ -41,7 +41,7 @@ const sitemapRoutes: SitemapRoute[] = [
     priority: 0.7,
   },
   {
-    path: "/docs",
+    path: "/documentation",
     changeFrequency: "monthly",
     priority: 0.6,
   },

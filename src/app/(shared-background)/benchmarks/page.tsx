@@ -3,47 +3,23 @@ import {
   MainHeaderContentWrapper,
 } from "@/components/landing/MainHeader";
 import { Footer } from "@/components/landing/Footer";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 export default function BenchmarksPage() {
   return (
     <>
       <MainHeader />
       <MainHeaderContentWrapper>
-        <main className="mx-auto max-w-7xl px-4 py-16 sm:py-24">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-              Benchmarks
-            </h1>
-            <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
-              Coming soon: Run benchmarks and compare results across different
-              models
-            </p>
-          </div>
-          <Card className="bg-background/40 border-primary/10 mt-12">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <CardTitle>Coming Soon</CardTitle>
-                <Badge variant="secondary">In Development</Badge>
-              </div>
-              <CardDescription>
-                Browser-native benchmarking tools are being developed.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">
-                Soon you&apos;ll be able to run benchmarks directly in your
-                browser — no CLI needed.
+        <main className="mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-center px-4 pt-16 pb-8 sm:py-16 md:py-24">
+          <div className="w-full max-w-5xl">
+            <div className="text-center">
+              <h2 className="mt-0 text-2xl font-bold tracking-tight sm:mt-0 sm:text-3xl">
+                Benchmarks
+              </h2>
+              <p className="text-muted-foreground mx-auto mt-0.5 max-w-2xl text-base sm:mt-1">
+                Coming soon
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </main>
         <Footer />
       </MainHeaderContentWrapper>
