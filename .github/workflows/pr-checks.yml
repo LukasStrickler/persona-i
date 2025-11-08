@@ -1,8 +1,7 @@
 name: PR Checks
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  push:
     paths:
       # TypeScript/JavaScript files
       - '**.ts'
@@ -23,24 +22,6 @@ on:
       - 'package.json'
       - 'bun.lock'
       # Always run on workflow changes
-      - '.github/workflows/**'
-  push:
-    paths:
-      - '**.ts'
-      - '**.tsx'
-      - '**.js'
-      - '**.jsx'
-      - '**.mjs'
-      - '**.cjs'
-      - 'tsconfig.json'
-      - 'tsconfig.*.json'
-      - 'eslint.config.js'
-      - 'eslint.config.*'
-      - 'prettier.config.js'
-      - 'prettier.config.*'
-      - '.prettierrc*'
-      - 'package.json'
-      - 'bun.lock'
       - '.github/workflows/**'
 
 jobs:
