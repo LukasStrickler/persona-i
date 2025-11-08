@@ -14,6 +14,7 @@ export function NewsletterForm() {
     >
       <Input
         type="email"
+        name="email"
         placeholder="Enter your email"
         className="mx-auto max-w-80 flex-1 text-center"
         aria-label="Email address for newsletter"

@@ -108,7 +108,6 @@ export default function AccountPage() {
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
-    const abortController = new AbortController();
 
     try {
       const response = await fetch("/api/auth/delete-account", {
@@ -117,7 +116,6 @@ export default function AccountPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ confirmed: true }),
-        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -136,10 +134,6 @@ export default function AccountPage() {
         void router.push("/");
       }
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        // Request was aborted, component unmounted
-        return;
-      }
       console.error("Error deleting account:", error);
       if (mountedRef.current) {
         alert("Failed to delete account. Please try again.");

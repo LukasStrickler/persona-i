@@ -34,7 +34,7 @@ See [SETUP.md](../../SETUP.md) for current setup instructions.
 - **Object Store**: (Future) store rich assets (charts, report PDFs) in S3-compatible storage with pointers from `analysis_reports`.
 
 ## High-Level Module Layout
-```
+```text
 ┌────────────────┐ ┌──────────────────────┐ ┌─────────────────────┐
 │ Identity/Auth  │ │ Questionnaire Library │ │ Assessment Delivery │
 │ (BetterAuth)   │ │  templates & traits   │ │ (sessions/responses)│

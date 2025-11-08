@@ -111,7 +111,11 @@ function AuthErrorContent() {
           <Button
             variant="outline"
             onClick={() => {
-              router.back();
+              if (window.history.length > 1) {
+                void router.back();
+              } else {
+                void router.push("/");
+              }
             }}
             className="w-full"
           >

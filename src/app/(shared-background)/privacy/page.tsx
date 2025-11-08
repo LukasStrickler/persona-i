@@ -6,6 +6,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const PRIVACY_POLICY_LAST_UPDATED = "November 7, 2024";
+
 export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-16">
@@ -15,7 +17,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </CardTitle>
           <CardDescription className="text-muted-foreground text-base">
-            Last updated: November 7, 2024
+            Last updated: {PRIVACY_POLICY_LAST_UPDATED}
           </CardDescription>
         </CardHeader>
         <CardContent className="prose prose-gray max-w-none">
