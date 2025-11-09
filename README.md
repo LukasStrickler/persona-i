@@ -12,7 +12,6 @@ Persona[i] is a personality benchmarking platform that hosts personality questio
 - **AI Model Comparison** - Compare your personality with various LLM models
 - **Model Benchmarking** - Benchmark LLM models against each other
 
-
 ### Tech Stack
 
 - **[TypeScript](https://www.typescriptlang.org)** - Type-safe JavaScript
@@ -43,26 +42,26 @@ persona-i/
 ├── src/
 │   ├── app/                   # Next.js application pages
 │   │   ├── (shared-background)/
-│   │   │   ├── account/       
-│   │   │   ├── auth/          
-│   │   │   └── login/         
+│   │   │   ├── account/
+│   │   │   ├── auth/
+│   │   │   └── login/
 │   │   ├── api/               # API configuration
-│   │   └── layout.tsx         
+│   │   └── layout.tsx
 │   ├── components/            # React components
-│   │   ├── auth/              
-│   │   ├── landing/           
-│   │   ├── providers/         
-│   │   └── ui/                
+│   │   ├── auth/
+│   │   ├── landing/
+│   │   ├── providers/
+│   │   └── ui/
 │   ├── emails/                # Email templates
-│   ├── hooks/                 
+│   ├── hooks/
 │   ├── lib/                   # Utility libraries
 │   ├── server/                # Server-side code
 │   │   ├── api/               # tRPC API configuration
-│   │   │   ├── routers/       
-│   │   │   └── trpc.ts        
+│   │   │   ├── routers/
+│   │   │   └── trpc.ts
 │   │   └── db/                # Database schema
 │   └── styles/                # Global styles
-├── LICENSE                    
+├── LICENSE
 └── package.json               # Dependencies and scripts
 ```
 
@@ -123,9 +122,9 @@ Create a `.env` file in the project root with the following variables:
 - **`NEXT_PUBLIC_SITE_URL`** - Public-facing site URL for sitemap generation (optional, defaults to `http://localhost:3000` for development, `https://personai.review` for production)
 - **`RESEND_API_KEY`** - Your Resend API key for sending magic link emails (only required if using email magic-link functionality)
 - **`RESEND_FROM`** - The email address to send magic links from, must be verified in Resend (only required if using email magic-link functionality)
+- **`CONTACT_EMAIL`** - Email address to receive contact form submissions (required for contact form in production, optional in development where submissions are logged instead)
 - **`HCAPTCHA_SECRET_KEY`** - hCaptcha secret key for contact form verification (optional, contact form will skip verification in development if not set)
 - **`NEXT_PUBLIC_HCAPTCHA_SITE_KEY`** - hCaptcha site key for contact form (optional, contact form will skip verification in development if not set)
-- **`CONTACT_EMAIL`** - Email address to receive contact form submissions (optional, contact form will log submissions in development if not set)
 
 See [.env.example](.env.example) for a template.
 

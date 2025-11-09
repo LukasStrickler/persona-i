@@ -5,12 +5,14 @@
 The BetterAuth schema has been fully configured and integrated:
 
 ### Schema Tables Created
+
 - ✅ `user` - User accounts
 - ✅ `session` - User sessions
 - ✅ `account` - OAuth/social provider accounts
 - ✅ `verification` - Magic link verification tokens
 
 ### Configuration Files
+
 - ✅ `src/lib/auth.ts` - BetterAuth server configuration with Drizzle adapter
 - ✅ `src/lib/auth-client.ts` - BetterAuth client configuration
 - ✅ `src/app/api/auth/[...all]/route.ts` - Next.js App Router API route handler
@@ -69,6 +71,7 @@ bun run dev
 ```
 
 The BetterAuth endpoints will be available at:
+
 - `/api/auth/sign-in/magic-link` - POST to send magic link
 - `/api/auth/magic-link/verify` - GET to verify magic link token
 - `/api/auth/session` - GET current session
@@ -78,6 +81,7 @@ The BetterAuth endpoints will be available at:
 The BetterAuth schema includes:
 
 ### User Table
+
 - `id` - Primary key (text)
 - `name` - User's name
 - `email` - Unique email address
@@ -86,6 +90,7 @@ The BetterAuth schema includes:
 - `createdAt` / `updatedAt` - Timestamps
 
 ### Session Table
+
 - `id` - Primary key
 - `token` - Unique session token
 - `expiresAt` - Session expiration
@@ -93,6 +98,7 @@ The BetterAuth schema includes:
 - `ipAddress` / `userAgent` - Session metadata
 
 ### Account Table
+
 - `id` - Primary key
 - `providerId` - OAuth provider identifier
 - `accountId` - Provider's account ID
@@ -100,6 +106,7 @@ The BetterAuth schema includes:
 - `accessToken` / `refreshToken` - OAuth tokens
 
 ### Verification Table
+
 - `id` - Primary key
 - `identifier` - Email/phone identifier
 - `value` - Verification token/value
@@ -108,6 +115,6 @@ The BetterAuth schema includes:
 ## 🔧 Troubleshooting
 
 If you encounter environment variable errors:
+
 - Make sure all required variables are set in `.env`
 - For database operations, temporarily use: `SKIP_ENV_VALIDATION=true bun run db:generate`
-

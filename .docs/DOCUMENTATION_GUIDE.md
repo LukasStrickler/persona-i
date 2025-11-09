@@ -12,7 +12,8 @@
 
 ## Audience
 
-#### Know your audience:
+### Know your audience
+
 - **Developers**: Technical details, API references, architecture, setup procedures
 - **Users**: How-to guides, feature descriptions, troubleshooting
 - **Contributors**: Contribution guidelines, development workflow, code standards
@@ -36,7 +37,7 @@ project-root/
     ├── DOCUMENTATION_GUIDE.md   # This guide - documentation best practices
     │
     ├── guides/                   # Developer guides and tutorials
-    │   ├── README.md            # Overview of all guides 
+    │   ├── README.md            # Overview of all guides
     │   ├── getting-started.md  # Getting started guide for new developers
     │   ├── development.md       # Development workflow and best practices
     │   ├── deployment.md         # Deployment guide and procedures
@@ -49,7 +50,7 @@ project-root/
     │   └── db.puml             # Entity relationship diagram (PlantUML)
     │
     ├── api/                     # API documentation
-    │   ├── README.md            # API overview 
+    │   ├── README.md            # API overview
     │   ├── endpoints.md         # API endpoint reference with request/response examples
     │   ├── authentication.md   # Authentication and authorization documentation
     │   └── workflows.md         # API workflow diagrams and sequences
@@ -66,14 +67,17 @@ project-root/
 ### Subdirectory README Files
 
 #### Add README.md in subdirectories when:
+
 - ✅ Subdirectory has multiple related files
 - ✅ You want to provide an overview or quick reference
 - ✅ The subdirectory is a major documentation section
 
 #### Skip when:
+
 Subdirectory has only one or two files, or purpose is obvious from file names.
 
 **Example: `.docs/db/README.md`**
+
 ```markdown
 # Database Documentation
 
@@ -90,8 +94,9 @@ See [schema.md](./schema.md) for the complete schema documentation.
 
 For diagrams embedded directly in Markdown files, use **Mermaid**. Mermaid is natively supported by GitHub, GitLab, VS Code, and many other platforms.
 
-**Example: ER Diagram (Inline)**
-```markdown
+#### Example: ER Diagram (Inline)
+
+````markdown
 ## Database Schema
 
 ```mermaid
@@ -107,9 +112,11 @@ erDiagram
     }
     User ||--o{ Post : "owns"
 ```
-```
+````
 
-**Example: Sequence Diagram (Inline)**
+````
+
+#### Example: Sequence Diagram (Inline)
 ```markdown
 ## User Workflow
 
@@ -123,21 +130,23 @@ sequenceDiagram
     User->>WebApp: Submit form
     WebApp->>API: createItem()
     API->>DB: INSERT item
-```
-```
+````
+
+````
 
 ### Separate Files: Use PlantUML
 
 For diagrams stored as separate `.puml` files, use **PlantUML**. These files are typically referenced from multiple documents or need to be version controlled separately.
 
-**Example: Reference PlantUML file**
+#### Example: Reference PlantUML file
 ```markdown
 ## Database Schema
 
 See the [entity relationship diagram](./db.puml) for the complete schema.
-```
+````
 
 **PlantUML file format** (`.puml` files):
+
 ```plantuml
 @startuml
 entity User {
@@ -158,20 +167,25 @@ User ||--o{ Post : "owns"
 ### Decision: Embed vs Separate File
 
 #### Embed Mermaid in markdown when:
+
 Diagram provides real value and is relevant to the document, even if complex. Good for overviews, workflows, and visual summaries that enhance understanding.
 
 #### Use separate `.puml` file (PlantUML) when:
+
 Diagram is referenced from multiple documents, part of a collection, or needs to be version controlled separately.
 
 ## Code Comments vs Documentation
 
 #### Use code comments for:
+
 Explaining "why" implementation choices, complex algorithms, workarounds, non-obvious behavior.
 
 #### Use documentation for:
+
 High-level architecture, API endpoints, setup procedures, workflows, user-facing features.
 
 **Example: Code Comment**
+
 ```typescript
 // Use profile table instead of user to support both authenticated and anonymous users
 // This allows us to track data for users who haven't signed up yet
@@ -181,6 +195,7 @@ const profile = await db.query.profile.findFirst({
 ```
 
 **Example: Documentation**
+
 ```markdown
 ## User Profiles
 
@@ -192,17 +207,18 @@ The `profile` table decouples authentication from user data:
 
 ## When to Document
 
-| Change Type | Document | Don't Document |
-|------------|----------|----------------|
-| **Schema/Database** | New tables, columns, relationships, migrations | Minor schema tweaks, index additions |
-| **API** | New/modified endpoints, auth changes, breaking changes | Internal API refactoring, parameter renames |
-| **Component/UI** | New features, major changes, workflow changes | UI styling changes, minor bug fixes |
-| **Configuration** | New env vars, setup changes, deployment changes | Config value updates, default changes |
-| **Architecture** | System design changes, new services, integrations | Internal refactoring, code reorganization |
+| Change Type         | Document                                               | Don't Document                              |
+| ------------------- | ------------------------------------------------------ | ------------------------------------------- |
+| **Schema/Database** | New tables, columns, relationships, migrations         | Minor schema tweaks, index additions        |
+| **API**             | New/modified endpoints, auth changes, breaking changes | Internal API refactoring, parameter renames |
+| **Component/UI**    | New features, major changes, workflow changes          | UI styling changes, minor bug fixes         |
+| **Configuration**   | New env vars, setup changes, deployment changes        | Config value updates, default changes       |
+| **Architecture**    | System design changes, new services, integrations      | Internal refactoring, code reorganization   |
 
 ## Examples
 
 ### ✅ Good: Database Schema
+
 ```markdown
 ## Database Schema
 
@@ -216,17 +232,19 @@ See [Entity Relationship Diagram](./db.puml) for complete schema.
 ```
 
 ### ❌ Bad: Database Schema
+
 ```markdown
 ## Database Schema
 
-The database has many tables including user, session, account, verification, 
-profile, post, comment, tag, category, author, publisher, editor, reviewer, 
-moderator, admin, and many more. Each table has many columns and relationships. 
+The database has many tables including user, session, account, verification,
+profile, post, comment, tag, category, author, publisher, editor, reviewer,
+moderator, admin, and many more. Each table has many columns and relationships.
 The database is complex and uses an ORM for queries...
 ```
 
 ### ✅ Good: API Documentation
-```markdown
+
+````markdown
 ## API Endpoints
 
 ### Create Post
@@ -234,14 +252,17 @@ The database is complex and uses an ORM for queries...
 `POST /api/posts`
 
 #### Request:
+
 ```json
 {
   "title": "My Post",
   "content": "Post content"
 }
 ```
+````
 
 #### Response:
+
 ```json
 {
   "id": "uuid",
@@ -251,23 +272,28 @@ The database is complex and uses an ORM for queries...
 ```
 
 #### Errors:
+
 - `400 Bad Request` - Invalid title or content
 - `401 Unauthorized` - Missing or invalid authentication
+
 ```
+
 ```
 
 ## Docs-as-Code Approach
 
 #### Best practices:
+
 - ✅ Store documentation in version control (Git)
 - ✅ Update docs in the same PR as code changes
 - ✅ Review documentation changes in code reviews
-- ✅ Use plain text formats (Markdown, Mermaid for inline, PlantUML for .puml files)
+- ✅ Use plain text formats (**Markdown**, Mermaid for inline, PlantUML for .puml files)
 - ✅ Keep diagrams synchronized with code changes
 - ✅ Commit documentation changes with related code changes
 - ✅ Use descriptive commit messages: `docs: update API endpoint documentation`
 
 #### Regular maintenance:
+
 - Review documentation quarterly or after major releases
 - Verify all links still work
 - Update examples to match current code
@@ -276,6 +302,7 @@ The database is complex and uses an ORM for queries...
 ## Consistency and Style
 
 #### Maintain consistency:
+
 - ✅ Use consistent terminology across all docs
 - ✅ Follow the same structure for similar documentation types
 - ✅ Use consistent formatting (headings, code blocks, lists)
@@ -283,12 +310,14 @@ The database is complex and uses an ORM for queries...
 ## Discoverability and Cross-Referencing
 
 #### Make documentation discoverable:
+
 - ✅ Use clear, descriptive file names
 - ✅ Add cross-references between related documents
 - ✅ Link from README to relevant documentation sections
 - ✅ Use consistent heading structure for easy navigation
 
 **Example: Cross-referencing**
+
 ```markdown
 ## Database Schema
 
@@ -308,6 +337,7 @@ See [API Documentation](../api/endpoints.md) for API usage.
 ### Documentation Checklist
 
 Before creating a PR:
+
 - [ ] Run `docs:check` (if available) to identify needed updates
 - [ ] Review changed files and determine documentation impact
 - [ ] Update relevant documentation files
@@ -321,21 +351,25 @@ Before creating a PR:
 ### Common Tasks
 
 #### Adding a new feature:
+
 1. Update README with feature description
 2. Add API docs if it exposes new endpoints
 3. Create workflow diagram if process is complex
 
 #### Changing database schema:
+
 1. Update schema documentation
 2. Update ER diagram (`.puml` file for PlantUML, or inline Mermaid)
 3. Update migration documentation if process changed
 
 #### Modifying API:
+
 1. Update API documentation
 2. Update workflow diagrams if flows changed
 3. Document breaking changes prominently
 
 #### Adding new documentation section:
+
 1. Create subdirectory in `.docs/`
 2. Add README.md if section has multiple files
 3. Link to new section from main README
@@ -348,6 +382,7 @@ Search for: Root-level markdown files, `.docs/` directory and subdirectories, RE
 ### Tools
 
 **Checking for updates:**
+
 ```bash
 # Use your project's documentation check command
 # Examples: npm run docs:check, bun run docs:check, yarn docs:check
@@ -356,6 +391,7 @@ Search for: Root-level markdown files, `.docs/` directory and subdirectories, RE
 ## Summary
 
 Effective documentation:
+
 - ✅ Is **focused** and **concise**
 - ✅ Uses **visuals** for complex concepts
 - ✅ **Adapts** to project structure and needs

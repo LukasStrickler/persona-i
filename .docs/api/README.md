@@ -11,6 +11,7 @@ This directory contains API documentation for Persona[i].
 ## Overview
 
 Persona[i] uses:
+
 - **BetterAuth** for authentication (magic link-based)
 - **Next.js API Routes** for REST endpoints
 - **tRPC** for type-safe APIs (planned)
@@ -23,4 +24,3 @@ All authenticated endpoints require a valid session cookie. See [authentication.
 
 - **Development**: `http://localhost:3000`
 - **Production**: Set via `NEXT_PUBLIC_BETTER_AUTH_URL` environment variable
-

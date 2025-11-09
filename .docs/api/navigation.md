@@ -14,6 +14,7 @@ The logo navigation behavior depends on authentication state:
 - **Authenticated**: Logo navigates to `/tests` (tests page)
 
 **Implementation**:
+
 ```typescript
 <Link href={isAuthenticated ? "/tests" : "/"}>
   <Logo variant="navigation" />
@@ -30,6 +31,7 @@ The logo is configured to act like an image, not selectable text:
 - **Accessible**: Proper ARIA labels for screen readers
 
 **CSS Classes**:
+
 - `cursor-pointer` - Indicates clickability
 - `select-none` - Prevents text selection
 
@@ -38,6 +40,7 @@ The logo is configured to act like an image, not selectable text:
 ### Desktop Navigation
 
 Desktop navigation shows:
+
 - **Tests** - `/tests`
 - **Models** - `/models`
 - **Benchmarks** - `/benchmarks`
@@ -46,6 +49,7 @@ Desktop navigation shows:
 ### Mobile Navigation
 
 Mobile navigation uses a hamburger menu with:
+
 - Same navigation items as desktop
 - Account section at bottom (if authenticated)
 - Sign in/Create account section (if not authenticated)
@@ -55,6 +59,7 @@ Mobile navigation uses a hamburger menu with:
 ### Authenticated Users
 
 When authenticated, the header shows:
+
 - **Account button** (desktop) - Shows user name/email, navigates to `/account`
 - **Account button** (mobile) - Shows user icon, navigates to `/account`
 - **Navigation items** - All navigation items available
@@ -62,6 +67,7 @@ When authenticated, the header shows:
 ### Unauthenticated Users
 
 When not authenticated, the header shows:
+
 - **Create account button** (desktop) - Navigates to `/login?mode=signup`
 - **Sign in button** (desktop) - Navigates to `/login`
 - **Sign in button** (mobile) - Navigates to `/login`
@@ -70,9 +76,9 @@ When not authenticated, the header shows:
 ## Login Page Navigation
 
 The login/signup page includes the main header, allowing users to:
+
 - Navigate to other sections while on the login page
 - Click the logo to return to the landing page
 - Access navigation items without completing login
 
 This improves user experience by not trapping users on the login page.
-

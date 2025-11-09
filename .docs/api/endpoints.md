@@ -22,6 +22,7 @@ Update the authenticated user's name.
 **Authentication**: Required
 
 **Request Body**:
+
 ```json
 {
   "name": "John Doe"
@@ -29,12 +30,14 @@ Update the authenticated user's name.
 ```
 
 **Request Headers**:
+
 ```text
 Content-Type: application/json
 Cookie: better-auth.session_token=...
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -45,6 +48,7 @@ Cookie: better-auth.session_token=...
 **Error Responses**:
 
 - **401 Unauthorized** - No valid session
+
 ```json
 {
   "error": "Unauthorized"
@@ -52,6 +56,7 @@ Cookie: better-auth.session_token=...
 ```
 
 - **400 Bad Request** - Invalid name format
+
 ```json
 {
   "error": "Validation error",
@@ -65,6 +70,7 @@ Cookie: better-auth.session_token=...
 ```
 
 - **404 Not Found** - User not found after update
+
 ```json
 {
   "error": "User not found"
@@ -72,6 +78,7 @@ Cookie: better-auth.session_token=...
 ```
 
 **Name Validation**:
+
 - Minimum length: 2 characters
 - Maximum length: 50 characters
 - Allowed characters: Unicode letters, numbers, spaces, hyphens, apostrophes
@@ -86,6 +93,7 @@ Permanently delete the authenticated user's account and all associated data.
 **Authentication**: Required
 
 **Request Body**:
+
 ```json
 {
   "confirmed": true
@@ -93,12 +101,14 @@ Permanently delete the authenticated user's account and all associated data.
 ```
 
 **Request Headers**:
+
 ```text
 Content-Type: application/json
 Cookie: better-auth.session_token=...
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -109,6 +119,7 @@ Cookie: better-auth.session_token=...
 **Error Responses**:
 
 - **401 Unauthorized** - No valid session
+
 ```json
 {
   "error": "Unauthorized"
@@ -116,6 +127,7 @@ Cookie: better-auth.session_token=...
 ```
 
 - **400 Bad Request** - Invalid JSON
+
 ```json
 {
   "error": "Invalid or malformed JSON in request body"
@@ -123,6 +135,7 @@ Cookie: better-auth.session_token=...
 ```
 
 - **403 Forbidden** - Missing confirmation
+
 ```json
 {
   "error": "Account deletion requires confirmation"
@@ -130,6 +143,7 @@ Cookie: better-auth.session_token=...
 ```
 
 - **500 Internal Server Error** - Deletion failed
+
 ```json
 {
   "error": "Internal server error"
@@ -137,6 +151,7 @@ Cookie: better-auth.session_token=...
 ```
 
 **Important Notes**:
+
 - **Requires explicit confirmation**: `confirmed: true` must be set in request body
 - **Permanent deletion**: All user data is deleted (sessions, user record, cascading deletes)
 - **GDPR compliant**: All user data is permanently removed
@@ -153,3 +168,134 @@ BetterAuth provides the following endpoints (see [BetterAuth documentation](http
 
 These endpoints are handled by BetterAuth and follow BetterAuth conventions.
 
+## Contact Form
+
+### Submit Contact Form
+
+Submit a contact form with security features including honeypot, hCaptcha, and CSRF protection.
+
+**Endpoint**: `POST /api/contact`
+
+**Authentication**: Not required
+
+**Request Body**:
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1 (555) 123-4567",
+  "message": "Your message here",
+  "consent": true,
+  "website": "",
+  "hCaptchaToken": "hcaptcha-token-here",
+  "csrfToken": "optional-csrf-token",
+  "secret": "optional-secret"
+}
+```
+
+**Request Headers**:
+
+```text
+Content-Type: application/json
+X-Contact-Secret: csrf-token-from-cookie
+Cookie: personai_contact_secret=csrf-token
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "success": true
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Invalid JSON
+
+```json
+{
+  "success": false,
+  "error": "invalid_json"
+}
+```
+
+- **400 Bad Request** - Validation error
+
+```json
+{
+  "success": false,
+  "error": "validation_error"
+}
+```
+
+- **400 Bad Request** - hCaptcha verification failed
+
+```json
+{
+  "success": false,
+  "error": "captcha_error"
+}
+```
+
+- **403 Forbidden** - CSRF token mismatch
+
+```json
+{
+  "success": false,
+  "error": "csrf_error"
+}
+```
+
+- **500 Internal Server Error** - Configuration error (CONTACT_EMAIL not set in production)
+
+```json
+{
+  "success": false,
+  "error": "configuration_error"
+}
+```
+
+- **500 Internal Server Error** - Email sending failed
+
+```json
+{
+  "success": false,
+  "error": "email_error"
+}
+```
+
+- **500 Internal Server Error** - Internal server error
+
+```json
+{
+  "success": false,
+  "error": "internal_error"
+}
+```
+
+**Validation Rules**:
+
+- **name**: Required, string, trimmed, 2-100 characters
+- **email**: Required, string, trimmed, valid email format
+- **phone**: Optional, string, matches pattern `/^[\d\s\-\+\(\)]*$/`, max 20 characters
+- **message**: Required, string, trimmed, 10-2000 characters
+- **consent**: Required, boolean, must be `true`
+- **website** (honeypot): Must be empty string (max 0 characters)
+- **hCaptchaToken**: Required, string, min 1 character
+- **csrfToken**: Optional, string (validated via `X-Contact-Secret` header)
+- **secret**: Optional, string (validated via `X-Contact-Secret` header)
+
+**Security Features**:
+
+- **Honeypot**: Hidden field (`website`) that must be empty. Bots filling this field are silently rejected.
+- **hCaptcha**: Required verification token. In development, verification is skipped if `HCAPTCHA_SECRET_KEY` is not set.
+- **CSRF Protection**: Token must match between cookie (`personai_contact_secret`) and header (`X-Contact-Secret`).
+
+**Important Notes**:
+
+- In development mode, if `CONTACT_EMAIL` is not set, the form will log safe metadata instead of sending an email.
+- In production mode, `CONTACT_EMAIL` must be configured or the endpoint will return a configuration error.
+- Honeypot field is silently accepted (returns success) to avoid revealing its existence to bots.
+- All string fields are automatically trimmed before validation.
