@@ -1,41 +1,60 @@
 #!/bin/bash
 # Dismiss PR review comments with a reason
-# Usage: ./dismiss-pr-comment.sh <PR_NUMBER> <COMMENT_ID> <REASON>
-#   PR_NUMBER: The PR number
-#   COMMENT_ID: The comment ID to dismiss
-#   REASON: The reason for dismissal (e.g., "not applicable", "false positive", "out of scope")
+# Usage: ./dismiss-pr-comment.sh [PR_NUMBER] <COMMENT_ID> <REASON>
+#   PR_NUMBER: The PR number (optional, defaults to latest detected PR)
+#   COMMENT_ID: The comment ID to dismiss (required)
+#   REASON: The reason for dismissal (required, e.g., "not applicable", "false positive", "out of scope")
 
 set -euo pipefail
 
-# Source shared utilities
+# Initialize script using utility function
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ ! -r "${SCRIPT_DIR}/lib/pr-comments-utils.sh" ]; then
-  echo "❌ Error: pr-comments-utils.sh not found or not readable: ${SCRIPT_DIR}/lib/pr-comments-utils.sh" >&2
-  exit 1
-fi
-source "${SCRIPT_DIR}/lib/pr-comments-utils.sh"
-
-# Check all prerequisites at once using utils
-if ! check_prerequisites; then
+if ! source "${SCRIPT_DIR}/lib/pr-comments-utils.sh" || ! setup_pr_comments_script; then
   exit 1
 fi
 
 # Parse arguments
-if [ $# -lt 3 ]; then
-  log_error "Usage: $0 <PR_NUMBER> <COMMENT_ID> <REASON>"
+if [ $# -lt 2 ]; then
+  log_error "Usage: $0 [PR_NUMBER] <COMMENT_ID> <REASON>"
   echo ""
   echo "Examples:"
-  echo "  $0 1 2507094339 \"not applicable\""
-  echo "  $0 1 2507094339 \"false positive\""
-  echo "  $0 1 2507094339 \"out of scope\""
+  echo "  $0 2507094339 \"not applicable\"        # Dismiss comment (auto-detect PR)"
+  echo "  $0 1 2507094339 \"not applicable\"       # Dismiss comment from PR #1"
+  echo "  $0 2507094339 \"false positive\"         # Dismiss with reason"
   echo ""
   echo "Note: REASON should be a short description of why the comment is being dismissed."
   exit 1
 fi
 
-PR_NUMBER="$1"
-COMMENT_ID="$2"
-REASON="$3"
+# Check if first argument is a PR number (small number < 1000) or comment ID (large number)
+FIRST_ARG="$1"
+if echo "$FIRST_ARG" | grep -qE '^[0-9]+$' && [ "$FIRST_ARG" -lt 1000 ]; then
+  # First argument is likely a PR number
+  PR_NUMBER="$FIRST_ARG"
+  COMMENT_ID="$2"
+  REASON="$3"
+else
+  # First argument is likely a comment ID, auto-detect PR
+  PR_NUMBER=""
+  COMMENT_ID="$1"
+  REASON="$2"
+fi
+
+# Auto-detect PR number if not provided
+if [ -z "$PR_NUMBER" ]; then
+  log_info "No PR number provided, detecting latest PR..."
+  PR_NUMBER=$(detect_pr_number)
+  if [ -z "$PR_NUMBER" ]; then
+    log_error "Could not detect PR number automatically"
+    echo ""
+    echo "Try one of these methods:"
+    echo "  1. Run 'bun run pr:comments <PR_NUMBER>' first to create a metadata file"
+    echo "  2. Use 'gh pr view' to see if GitHub CLI can detect the PR"
+    echo "  3. Manually specify the PR number: $0 <PR_NUMBER> <COMMENT_ID> <REASON>"
+    exit 1
+  fi
+  log_info "Detected PR: #${PR_NUMBER}"
+fi
 
 # Validate PR number using utils
 if ! validate_pr_number "$PR_NUMBER"; then
@@ -43,8 +62,8 @@ if ! validate_pr_number "$PR_NUMBER"; then
   exit 1
 fi
 
-# Validate comment ID (must be numeric)
-if ! echo "$COMMENT_ID" | grep -qE '^[0-9]+$'; then
+# Validate comment ID using utility function
+if ! validate_comment_id "$COMMENT_ID"; then
   log_error "Invalid comment ID: ${COMMENT_ID} (must be numeric)"
   echo "   Use 'bun run pr:comments:get <PR_NUMBER> <INDEX>' to find comment IDs."
   exit 1
@@ -98,15 +117,8 @@ fi
 
 if [ "$IS_RESOLVED" = "true" ]; then
   log_warning "Thread ${THREAD_ID} is already resolved"
-  echo ""
   log_info "Note: Adding dismissal comment will not unresolve the thread."
-  echo ""
-  read -p "Add dismissal comment anyway? (yes/no): " CONFIRM
-  if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "y" ]; then
-    log_warning "Cancelled by user"
-    exit 0
-  fi
-  # Skip resolving if already resolved
+  # Skip resolving if already resolved (non-interactive for LLM agents)
   SKIP_RESOLVE=true
 else
   SKIP_RESOLVE=false

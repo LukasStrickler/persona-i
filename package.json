@@ -27,6 +27,7 @@
     "review:read": "bash scripts/review-read.sh",
     "review:cleanup": "bash scripts/review-cleanup.sh",
     "pr:comments": "bash scripts/pr-comments-fetch.sh read",
+    "pr:comments:detect": "bash scripts/pr-comments-detect.sh",
     "pr:comments:get": "bash scripts/pr-comments-get.sh",
     "pr:comments:resolve": "bash scripts/pr-comments-resolve.sh",
     "pr:comments:resolve:interactive": "bash scripts/pr-comments-fetch.sh resolve",

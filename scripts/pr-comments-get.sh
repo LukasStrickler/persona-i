@@ -1,55 +1,95 @@
 #!/bin/bash
 # Get a single PR comment with full context
-# Usage: ./get-pr-comment.sh <PR_NUMBER> <INDEX_OR_ID> [--verbose]
-#   PR_NUMBER: The PR number
-#   INDEX_OR_ID: Either a number (1-based index of unresolved comments) or a comment ID
+# Usage: ./get-pr-comment.sh [PR_NUMBER] [INDEX_OR_ID] [--verbose]
+#   PR_NUMBER: The PR number (optional, defaults to latest detected PR)
+#   INDEX_OR_ID: Either a number (1-based index of unresolved comments) or a comment ID (optional, defaults to 1)
 #   --verbose: Enable verbose logging
+# 
+# Examples:
+#   $0                    # Auto-detect PR, get first unresolved comment (index 1)
+#   $0 1                  # Auto-detect PR, get comment at index 1 or by ID 1
+#   $0 1 2                # PR #1, get comment at index 2 or by ID 2
+#   $0 2507015942         # Auto-detect PR, get comment by ID 2507015942
 
 set -euo pipefail
 
-# Source shared utilities
+# Initialize script using utility function
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ ! -r "${SCRIPT_DIR}/lib/pr-comments-utils.sh" ]; then
-  echo "❌ Error: pr-comments-utils.sh not found or not readable: ${SCRIPT_DIR}/lib/pr-comments-utils.sh" >&2
+if ! source "${SCRIPT_DIR}/lib/pr-comments-utils.sh" || ! setup_pr_comments_script; then
   exit 1
 fi
-source "${SCRIPT_DIR}/lib/pr-comments-utils.sh"
-
-# Verbose logging flag (disabled by default)
-VERBOSE=false
-
-# Source shared utilities
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ ! -r "${SCRIPT_DIR}/lib/pr-comments-utils.sh" ]; then
-  echo "❌ Error: pr-comments-utils.sh not found or not readable: ${SCRIPT_DIR}/lib/pr-comments-utils.sh" >&2
-  exit 1
-fi
-source "${SCRIPT_DIR}/lib/pr-comments-utils.sh"
-
-# Check prerequisites
-if ! check_prerequisites; then
-  exit 1
-fi
-
-# Parse arguments
-if [ $# -lt 2 ]; then
-  log_error "Usage: $0 <PR_NUMBER> <INDEX_OR_ID> [--verbose]"
-  echo ""
-  echo "Examples:"
-  echo "  $0 1 1              # Get first unresolved comment from PR #1"
-  echo "  $0 1 2507015942     # Get comment by ID from PR #1"
-  echo "  $0 1 1 --verbose    # Get first comment with verbose logging"
-  exit 1
-fi
-
-PR_NUMBER="$1"
-INDEX_OR_ID="$2"
 
 # Parse verbose flag using utils
 VERBOSE=$(parse_verbose_flag "$@")
 
 # Export VERBOSE so log_verbose() can use it
 export VERBOSE
+
+# Parse arguments - both PR_NUMBER and INDEX_OR_ID are optional
+PR_NUMBER=""
+INDEX_OR_ID=""
+
+# Collect non-flag arguments
+NON_FLAG_ARGS=()
+for arg in "$@"; do
+  if [ "$arg" != "--verbose" ] && [ "$arg" != "-v" ]; then
+    if echo "$arg" | grep -qE '^[0-9]+$'; then
+      NON_FLAG_ARGS+=("$arg")
+    else
+      log_error "Invalid argument: $arg (must be numeric)"
+      exit 1
+    fi
+  fi
+done
+
+# Parse arguments based on count
+if [ ${#NON_FLAG_ARGS[@]} -eq 0 ]; then
+  # No arguments: auto-detect PR, use index 1
+  PR_NUMBER=""
+  INDEX_OR_ID="1"
+elif [ ${#NON_FLAG_ARGS[@]} -eq 1 ]; then
+  # One argument: could be PR number or index/ID
+  ARG="${NON_FLAG_ARGS[0]}"
+  if [ "$ARG" -lt 1000 ]; then
+    # Small number - treat as index, auto-detect PR
+    PR_NUMBER=""
+    INDEX_OR_ID="$ARG"
+  else
+    # Large number - treat as comment ID, auto-detect PR
+    PR_NUMBER=""
+    INDEX_OR_ID="$ARG"
+  fi
+elif [ ${#NON_FLAG_ARGS[@]} -eq 2 ]; then
+  # Two arguments: first is PR number, second is index/ID
+  PR_NUMBER="${NON_FLAG_ARGS[0]}"
+  INDEX_OR_ID="${NON_FLAG_ARGS[1]}"
+else
+  log_error "Too many arguments"
+  echo "   Usage: $0 [PR_NUMBER] [INDEX_OR_ID] [--verbose]"
+  exit 1
+fi
+
+# Auto-detect PR number if not provided
+if [ -z "$PR_NUMBER" ]; then
+  log_info "No PR number provided, detecting latest PR..."
+  PR_NUMBER=$(detect_pr_number)
+  if [ -z "$PR_NUMBER" ]; then
+    log_error "Could not detect PR number automatically"
+    echo ""
+    echo "Try one of these methods:"
+    echo "  1. Run 'bun run pr:comments <PR_NUMBER>' first to create a metadata file"
+    echo "  2. Use 'gh pr view' to see if GitHub CLI can detect the PR"
+    echo "  3. Manually specify the PR number: $0 <PR_NUMBER> [INDEX_OR_ID]"
+    exit 1
+  fi
+  log_info "Detected PR: #${PR_NUMBER}"
+fi
+
+# Default to first unresolved comment (index 1) if not provided
+if [ -z "$INDEX_OR_ID" ]; then
+  INDEX_OR_ID="1"
+  log_info "No index/ID provided, using first unresolved comment (index 1)"
+fi
 
 # Validate PR number
 if ! validate_pr_number "$PR_NUMBER"; then
@@ -76,7 +116,35 @@ log_verbose "Using comments file: $(basename "$METADATA_FILE")"
 
 # Get comment by index or ID using utils
 RESULT=$(get_comment_by_index_or_id "$METADATA_FILE" "$INDEX_OR_ID")
-if [ $? -ne 0 ]; then
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 2 ]; then
+  # All comments are resolved - show completion message
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "✅ All PR Comments Resolved"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  
+  # Get statistics from metadata file
+  TOTAL_COMMENTS=$(jq '.review_comments | length // 0' "$METADATA_FILE" 2>/dev/null || echo "0")
+  RESOLVED_COUNT=$(jq '[.review_comments[] | select(.resolved == true)] | length // 0' "$METADATA_FILE" 2>/dev/null || echo "0")
+  
+  echo "  PR: #${PR_NUMBER}"
+  echo "  Total comments: ${TOTAL_COMMENTS}"
+  echo "  Resolved: ${RESOLVED_COUNT}"
+  echo "  Unresolved: 0"
+  echo ""
+  echo "🎉 All PR review comments have been processed!"
+  echo ""
+  echo "Next steps:"
+  echo "  - Review the changes and ensure everything is correct"
+  echo "  - Run 'bun run agent:finalize' to verify code quality"
+  echo "  - Commit and push your changes"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  exit 0
+elif [ $EXIT_CODE -ne 0 ]; then
   exit 1
 fi
 

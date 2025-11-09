@@ -276,6 +276,23 @@ validate_pr_number() {
   return 0
 }
 
+# Validate comment ID is numeric
+# Usage: validate_comment_id <comment_id>
+# Returns: 0 if valid, 1 if invalid
+validate_comment_id() {
+  local comment_id="$1"
+  
+  if [ -z "$comment_id" ]; then
+    return 1
+  fi
+  
+  if ! echo "$comment_id" | grep -qE '^[0-9]+$'; then
+    return 1
+  fi
+  
+  return 0
+}
+
 # Validate JSON string
 # Usage: validate_json <json_string>
 # Returns: 0 if valid, 1 if invalid
@@ -487,6 +504,58 @@ get_pr_commit_sha() {
   return 0
 }
 
+# Validate that a PR number matches the current commit SHA
+# Usage: validate_pr_matches_commit <pr_number> [current_sha]
+# Returns: 0 if matches, 1 if doesn't match or error
+# If current_sha is not provided, uses git rev-parse HEAD
+validate_pr_matches_commit() {
+  local pr_number="$1"
+  local current_sha="${2:-}"
+  
+  # Get current commit SHA if not provided
+  if [ -z "$current_sha" ]; then
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+      log_error "Not in a git repository"
+      return 1
+    fi
+    current_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+    if [ -z "$current_sha" ]; then
+      log_error "Failed to get current commit SHA"
+      return 1
+    fi
+  fi
+  
+  # Get PR's head commit SHA
+  local pr_head_sha
+  pr_head_sha=$(get_pr_commit_sha "$pr_number" 2>/dev/null || echo "")
+  
+  if [ -z "$pr_head_sha" ]; then
+    log_error "Failed to get PR #${pr_number} head commit SHA"
+    return 1
+  fi
+  
+  # Compare SHAs - exact match
+  if [ "$current_sha" = "$pr_head_sha" ]; then
+    return 0
+  fi
+  
+  # Check if PR head is an ancestor of current commit (user is ahead, e.g., GitButler workspace commits)
+  if git merge-base --is-ancestor "$pr_head_sha" "$current_sha" 2>/dev/null; then
+    log_verbose "PR #${pr_number} head (${pr_head_sha:0:8}...) is an ancestor of current commit (${current_sha:0:8}...) - validation passed"
+    return 0
+  fi
+  
+  # Check if current commit is an ancestor of PR head (user is behind)
+  if git merge-base --is-ancestor "$current_sha" "$pr_head_sha" 2>/dev/null; then
+    log_verbose "Current commit (${current_sha:0:8}...) is an ancestor of PR #${pr_number} head (${pr_head_sha:0:8}...) - validation passed"
+    return 0
+  fi
+  
+  # No relationship found - commits are on different branches
+  log_warning "PR #${pr_number} head commit (${pr_head_sha:0:8}...) doesn't match current commit (${current_sha:0:8}...) and they're not related"
+  return 1
+}
+
 # Check all prerequisites at once
 # Usage: check_prerequisites [skip_git]
 # Returns: 0 if all OK, 1 if any missing
@@ -593,8 +662,8 @@ get_comment_by_index_or_id() {
     comment_count=$(echo "$unresolved_comments" | jq 'length // 0' 2>/dev/null || echo "0")
     
     if [ "$comment_count" -eq 0 ]; then
-      log_warning "No unresolved comments found"
-      return 1
+      # Return special exit code 2 to indicate all comments are resolved
+      return 2
     fi
     
     if [ "$index" -lt 0 ] || [ "$index" -ge "$comment_count" ]; then
@@ -841,20 +910,11 @@ resolve_review_thread() {
 
 # Setup common script initialization
 # Usage: setup_pr_comments_script
-# Sets up: SCRIPT_DIR, sources utils, checks prerequisites
+# Note: Utils should already be sourced by caller before calling this function
+# Checks prerequisites only
 # Returns: 0 on success, 1 on failure
 setup_pr_comments_script() {
-  # Get script directory
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  
-  # Source shared utilities
-  if [ ! -r "${SCRIPT_DIR}/lib/pr-comments-utils.sh" ]; then
-    echo "❌ Error: pr-comments-utils.sh not found or not readable: ${SCRIPT_DIR}/lib/pr-comments-utils.sh" >&2
-    return 1
-  fi
-  source "${SCRIPT_DIR}/lib/pr-comments-utils.sh"
-  
-  # Check prerequisites
+  # Check prerequisites (utils should already be sourced)
   if ! check_prerequisites; then
     return 1
   fi
