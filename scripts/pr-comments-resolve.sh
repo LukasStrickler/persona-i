@@ -31,8 +31,8 @@ FIRST_ARG="$1"
 if echo "$FIRST_ARG" | grep -qE '^[0-9]+$' && [ "$FIRST_ARG" -lt 1000 ]; then
   # First argument is likely a PR number
   PR_NUMBER="$FIRST_ARG"
-  shift
-  COMMENT_IDS=("$@")
+shift
+COMMENT_IDS=("$@")
 else
   # First argument is likely a comment ID, auto-detect PR
   PR_NUMBER=""
