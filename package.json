@@ -22,10 +22,17 @@
     "typecheck": "tsc --noEmit",
     "agent:finalize": "bash scripts/finalize.sh",
     "docs:check": "bash scripts/check-docs.sh",
-    "review:task": "bash scripts/review.sh task",
-    "review:pr": "bash scripts/review.sh pr",
-    "review:read": "bash scripts/read-review.sh",
-    "review:cleanup": "bash scripts/cleanup-reviews.sh"
+    "review:task": "bash scripts/review-run.sh task",
+    "review:pr": "bash scripts/review-run.sh pr",
+    "review:read": "bash scripts/review-read.sh",
+    "review:cleanup": "bash scripts/review-cleanup.sh",
+    "pr:comments": "bash scripts/pr-comments-fetch.sh read",
+    "pr:comments:get": "bash scripts/pr-comments-get.sh",
+    "pr:comments:resolve": "bash scripts/pr-comments-resolve.sh",
+    "pr:comments:resolve:interactive": "bash scripts/pr-comments-fetch.sh resolve",
+    "pr:comments:dismiss": "bash scripts/pr-comments-dismiss.sh",
+    "pr:comments:cleanup": "bash scripts/pr-comments-cleanup.sh --all",
+    "pr:list": "bash scripts/pr-comments-fetch.sh list"
   },
   "dependencies": {
     "@hcaptcha/react-hcaptcha": "^1.14.0",
