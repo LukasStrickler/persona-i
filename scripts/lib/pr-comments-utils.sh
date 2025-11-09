@@ -866,6 +866,12 @@ resolve_review_thread() {
     return 1
   fi
   
+  # Validate thread ID format (should be a GraphQL ID string)
+  if ! echo "$thread_id" | grep -qE '^[A-Za-z0-9_/-]+$'; then
+    log_error "Invalid thread ID format: ${thread_id}"
+    return 1
+  fi
+  
   if ! command -v gh &> /dev/null; then
     log_error "GitHub CLI is required for resolve_review_thread"
     return 1

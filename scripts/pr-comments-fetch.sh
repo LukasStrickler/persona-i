@@ -19,14 +19,6 @@ if [ ! -r "${SCRIPT_DIR}/lib/pr-comments-utils.sh" ]; then
 fi
 source "${SCRIPT_DIR}/lib/pr-comments-utils.sh"
 
-# Check if we're in a git repository
-check_git_repo() {
-  if ! git rev-parse --git-dir > /dev/null 2>&1; then
-    log_error "Not in a git repository"
-    exit 1
-  fi
-}
-
 # Prompt for PR number if not provided
 get_pr_number() {
   local pr_number="$1"
@@ -210,12 +202,14 @@ fetch_issue_comments() {
   
   # Use GitHub API to get issue comments (PR comments that are not line-specific)
   # Note: PRs are also issues, so we use /issues/{pr_number}/comments
+  local stderr_file
+  stderr_file=$(mktemp)
   local response
   local error_output
-  response=$(gh api "repos/${owner}/${repo}/issues/${pr_number}/comments" 2> /tmp/gh_api_error_$$)
+  response=$(gh api "repos/${owner}/${repo}/issues/${pr_number}/comments" 2> "$stderr_file")
   local exit_code=$?
-  error_output=$(cat /tmp/gh_api_error_$$ 2>/dev/null || echo "")
-  rm -f /tmp/gh_api_error_$$ 2>/dev/null || true
+  error_output=$(cat "$stderr_file" 2>/dev/null || echo "")
+  rm -f "$stderr_file"
   
   if [ $exit_code -ne 0 ]; then
     log_error "Failed to fetch issue comments"
@@ -873,9 +867,10 @@ resolve_mode() {
 
 # List mode: Show all open PRs
 list_mode() {
-  # Validate prerequisites
-  check_gh_cli
-  check_git_repo
+  # Check all prerequisites at once using utils
+  if ! check_prerequisites; then
+    exit 1
+  fi
   
   # Get repository owner/repo
   local owner_repo

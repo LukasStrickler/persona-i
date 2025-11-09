@@ -83,8 +83,8 @@ if [ -z "$OWNER_REPO" ]; then
   exit 1
 fi
 
-# Parse owner/repo using utils
-read OWNER REPO <<< "$(parse_owner_repo "$OWNER_REPO")"
+  # Parse owner/repo using utils
+  read -r OWNER REPO <<< "$(parse_owner_repo "$OWNER_REPO")"
 
 log_info "Repository: ${OWNER}/${REPO}"
 log_info "PR: #${PR_NUMBER}"
@@ -127,7 +127,10 @@ fi
 
 # Remove duplicates from thread IDs
 if [ ${#THREAD_IDS_TO_RESOLVE[@]} -gt 0 ]; then
-UNIQUE_THREAD_IDS=($(printf '%s\n' "${THREAD_IDS_TO_RESOLVE[@]}" | sort -u))
+  UNIQUE_THREAD_IDS=()
+  while IFS= read -r line; do
+    [ -n "$line" ] && UNIQUE_THREAD_IDS+=("$line")
+  done < <(printf '%s\n' "${THREAD_IDS_TO_RESOLVE[@]}" | sort -u)
 else
   UNIQUE_THREAD_IDS=()
 fi
@@ -159,21 +162,53 @@ for THREAD_ID in "${UNIQUE_THREAD_IDS[@]}"; do
 done
 
 echo ""
-if [ "$RESOLVED_COUNT" -gt 0 ]; then
+# Show accurate success/failure status
+if [ "$RESOLVED_COUNT" -gt 0 ] && [ "$FAILED_COUNT" -eq 0 ]; then
+  # All threads resolved successfully
   log_success "Resolved ${RESOLVED_COUNT} thread(s)"
-fi
-
-if [ "$FAILED_COUNT" -gt 0 ]; then
-  log_warning "${FAILED_COUNT} thread(s) failed to resolve"
+elif [ "$RESOLVED_COUNT" -gt 0 ] && [ "$FAILED_COUNT" -gt 0 ]; then
+  # Partial success - some resolved, some failed
+  log_warning "Partially resolved: ${RESOLVED_COUNT} succeeded, ${FAILED_COUNT} failed"
+  echo ""
+  echo "⚠️  Some threads failed to resolve. This may indicate:"
+  echo "   - Threads were already resolved"
+  echo "   - Network/API errors"
+  echo "   - Permission issues"
+  echo "   - Invalid thread IDs"
+  echo ""
+  echo "Check the error messages above for details."
+elif [ "$RESOLVED_COUNT" -eq 0 ] && [ "$FAILED_COUNT" -gt 0 ]; then
+  # All failed
+  log_error "Failed to resolve ${FAILED_COUNT} thread(s)"
+  echo ""
+  echo "❌ No threads were resolved. This may indicate:"
+  echo "   - Threads were already resolved"
+  echo "   - Network/API errors"
+  echo "   - Permission issues"
+  echo "   - Invalid thread IDs"
+  echo ""
+  echo "Check the error messages above for details."
+  exit 1
+else
+  # No threads to resolve (shouldn't happen, but handle gracefully)
+  log_warning "No threads were resolved"
 fi
 
 # Automatically refresh comments to get latest data
 if [ "$RESOLVED_COUNT" -gt 0 ]; then
   echo ""
   log_info "Refreshing comments to get latest data..."
-  bash "${SCRIPT_DIR}/pr-comments-fetch.sh" read "$PR_NUMBER" > /dev/null 2>&1 || log_warning "Failed to refresh comments"
+  if bash "${SCRIPT_DIR}/pr-comments-fetch.sh" read "$PR_NUMBER" > /dev/null 2>&1; then
+    log_verbose "Comments refreshed successfully"
+  else
+    log_warning "Failed to refresh comments (this is non-critical)"
+  fi
 fi
 
 echo ""
-log_info "Done!"
+if [ "$RESOLVED_COUNT" -gt 0 ] && [ "$FAILED_COUNT" -eq 0 ]; then
+  log_info "Done!"
+else
+  log_warning "Done (with warnings - see above)"
+fi
 
