@@ -24,11 +24,9 @@ export const contactBaseSchema = z.object({
     .string()
     .transform((s) => s.trim())
     .pipe(
-      z
-        .string()
-        .refine((val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
-          message: "Please enter a valid email address",
-        }),
+      z.string().refine((val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+        message: "Please enter a valid email address",
+      }),
     ),
   phone: z
     .string()
