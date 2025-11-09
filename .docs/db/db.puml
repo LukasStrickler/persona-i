@@ -1,0 +1,173 @@
+@startuml
+' Core database ER/UML overview (Phase 0 scope)
+
+!define Table(x) class x << (T,#F5F5DC) >>
+!define PK(x) <b>x</b>
+!define FK(x) <i>x</i>
+
+hide circle
+skinparam class {
+  BackgroundColor<<T>> #FFFFF8
+  BorderColor #2F4858
+  ArrowColor #2F4858
+  FontName "Fira Code"
+}
+skinparam linetype ortho
+
+Table(User) {
+  PK(id) : text
+  email : text
+  name : text
+}
+
+Table(subject_profile) {
+  PK(id) : uuid
+  subject_type : text
+  FK(user_id) : text (nullable)
+  display_name : text
+  preferred_locale : text
+  metadata_json : json
+  consent_flags_json : json
+}
+
+Table(questionnaire) {
+  PK(id) : uuid
+  slug : text
+  title : text
+  FK(default_analysis_model_id) : uuid
+  status : text
+}
+
+Table(questionnaire_version) {
+  PK(id) : uuid
+  FK(questionnaire_id) : uuid
+  version : int
+  is_active : boolean
+  metadata_json : json
+}
+
+Table(question_bank_item) {
+  PK(id) : uuid
+  code : text
+  prompt : text
+  question_type : text
+  config_json : json
+}
+
+Table(question_option) {
+  PK(id) : uuid
+  FK(question_id) : uuid
+  label : text
+  value : text
+  position : int
+}
+
+Table(questionnaire_item) {
+  PK(id) : uuid
+  FK(questionnaire_version_id) : uuid
+  FK(question_id) : uuid
+  position : int
+  section : text
+  is_required : boolean
+}
+
+Table(analysis_model) {
+  PK(id) : uuid
+  slug : text
+  name : text
+  scoring_strategy : text
+  config_json : json
+}
+
+Table(trait_dimension) {
+  PK(id) : uuid
+  FK(analysis_model_id) : uuid
+  code : text
+  name : text
+  color_hex : text
+  range_min : int
+  range_max : int
+}
+
+Table(question_trait_mapping) {
+  PK(id) : uuid
+  FK(analysis_model_id) : uuid
+  FK(question_id) : uuid
+  FK(option_id) : uuid (nullable)
+  rule_type : text
+  weight : numeric
+  config_json : json
+}
+
+Table(assessment_session) {
+  PK(id) : uuid
+  FK(questionnaire_version_id) : uuid
+  FK(subject_profile_id) : uuid
+  FK(user_id) : text (nullable)
+  status : text
+  started_at : datetime
+  completed_at : datetime
+  metadata_json : json
+}
+
+Table(response) {
+  PK(id) : uuid
+  FK(assessment_session_id) : uuid
+  FK(question_id) : uuid
+  FK(questionnaire_item_id) : uuid
+  FK(selected_option_id) : uuid (nullable)
+  value_numeric : numeric
+  value_boolean : boolean
+  value_text : text
+  raw_payload_json : json
+}
+
+Table(analysis_run) {
+  PK(id) : uuid
+  FK(assessment_session_id) : uuid
+  FK(analysis_model_id) : uuid
+  score_version : int
+  status : text
+  started_at : datetime
+  completed_at : datetime
+  warnings_json : json
+}
+
+Table(trait_score) {
+  PK(id) : uuid
+  FK(analysis_run_id) : uuid
+  FK(dimension_id) : uuid
+  raw_score : numeric
+  normalized_score : numeric
+  percentile : numeric
+}
+
+' Relationships
+User "1" -- "0..1" subject_profile : owns >
+User "1" -- "0..*" assessment_session : initiates >
+subject_profile "1" -- "0..*" assessment_session : participates >
+
+questionnaire "1" -- "1..*" questionnaire_version : versions >
+questionnaire_version "1" -- "1..*" questionnaire_item : orders >
+
+question_bank_item "1" -- "0..*" question_option : options >
+question_bank_item "1" -- "1..*" questionnaire_item : referenced >
+
+analysis_model "1" -- "0..*" trait_dimension : has >
+analysis_model "1" -- "0..*" question_trait_mapping : rules >
+
+question_bank_item "1" -- "0..*" question_trait_mapping : scored_by >
+question_option "1" -- "0..*" question_trait_mapping : option_rule >
+
+assessment_session "1" -- "1..*" response : answers >
+questionnaire_item "1" -- "0..*" response : captured >
+question_option "1" -- "0..*" response : selected >
+
+assessment_session "1" -- "0..*" analysis_run : scored >
+analysis_model "1" -- "0..*" analysis_run : run >
+
+analysis_run "1" -- "0..*" trait_score : dimension_score >
+
+@enduml
+
+

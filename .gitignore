@@ -44,3 +44,15 @@ yarn-error.log*
 
 # idea files
 .idea
+
+# cursor documentation (not committed but accessible to Cursor)
+.cursor/
+# cursor rules and commands (should be committed)
+!.cursor/rules/
+!.cursor/commands/
+
+# CodeRabbit reviews
+.coderabbit/
+
+# PR comments
+.github/pr-comments/

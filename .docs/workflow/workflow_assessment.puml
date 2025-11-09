@@ -1,0 +1,38 @@
+@startuml
+' Sequence: Human subject completes questionnaire and scores are persisted
+
+actor Human as Human
+participant "Web App" as WebApp
+participant "API (tRPC)" as API
+database "DB (Turso)" as DB
+participant "Scoring Worker" as Worker
+
+== Session bootstrap ==
+Human -> WebApp : Open questionnaire landing
+WebApp -> API : createAssessmentSession(subject_profile_id, questionnaire_version_id)
+API -> DB : INSERT subject_profile (if first visit)\nUPSERT assessment_session(status="started")
+DB --> API : session_id
+API --> WebApp : session token & questionnaire payload
+
+== Answer capture ==
+loop For each question
+  Human -> WebApp : Submit answer
+  WebApp -> API : saveResponse(session_id, question_id, answer)
+  API -> DB : INSERT/UPSERT response
+end
+WebApp -> API : completeSession(session_id)
+API -> DB : UPDATE assessment_session(status="completed", completed_at)
+
+== Scoring ==
+API -> Worker : enqueueScoreJob(session_id)
+Worker -> DB : SELECT responses, trait mappings
+Worker -> DB : INSERT analysis_run(session_id, status="processing")
+Worker -> Worker : Evaluate rules & aggregate traits
+Worker -> DB : UPSERT trait_score + composite_score\nUPDATE analysis_run(status="completed")
+
+== Results delivery ==
+API -> DB : SELECT analysis_run + trait_score
+API --> WebApp : return result payload
+WebApp --> Human : Render charts & narratives
+
+@enduml

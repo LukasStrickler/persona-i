@@ -1,0 +1,268 @@
+@startuml
+' Extended database ER/UML overview (Phase 0 + optional extensions)
+
+!define Table(x) class x << (T,#F5F5DC) >>
+!define PK(x) <b>x</b>
+!define FK(x) <i>x</i>
+
+hide circle
+skinparam class {
+  BackgroundColor<<T>> #FFFFF8
+  BorderColor #2F4858
+  ArrowColor #2F4858
+  FontName "Fira Code"
+}
+skinparam linetype ortho
+
+Table(User) {
+  PK(id) : text
+  email : text
+  name : text
+}
+
+Table(subject_profile) {
+  PK(id) : uuid
+  subject_type : text
+  FK(user_id) : text
+  display_name : text
+  preferred_locale : text
+  metadata_json : json
+  consent_flags_json : json
+}
+
+Table(questionnaire) {
+  PK(id) : uuid
+  slug : text
+  title : text
+  FK(default_analysis_model_id) : uuid
+  status : text
+}
+
+Table(questionnaire_version) {
+  PK(id) : uuid
+  FK(questionnaire_id) : uuid
+  version : int
+  is_active : boolean
+  metadata_json : json
+}
+
+Table(question_bank_item) {
+  PK(id) : uuid
+  code : text
+  prompt : text
+  question_type : text
+  config_json : json
+}
+
+Table(question_option) {
+  PK(id) : uuid
+  FK(question_id) : uuid
+  label : text
+  value : text
+  position : int
+}
+
+Table(questionnaire_item) {
+  PK(id) : uuid
+  FK(questionnaire_version_id) : uuid
+  FK(question_id) : uuid
+  position : int
+  section : text
+  is_required : boolean
+}
+
+Table(question_branch_rule) {
+  PK(id) : uuid
+  FK(questionnaire_version_id) : uuid
+  FK(source_question_id) : uuid
+  FK(target_question_id) : uuid
+  effect : text
+  condition_json : json
+}
+
+Table(analysis_model) {
+  PK(id) : uuid
+  slug : text
+  name : text
+  scoring_strategy : text
+  config_json : json
+}
+
+Table(trait_dimension) {
+  PK(id) : uuid
+  FK(analysis_model_id) : uuid
+  code : text
+  name : text
+  color_hex : text
+  range_min : int
+  range_max : int
+}
+
+Table(trait_composite) {
+  PK(id) : uuid
+  FK(analysis_model_id) : uuid
+  code : text
+  name : text
+  aggregation_type : text
+  config_json : json
+}
+
+Table(question_trait_mapping) {
+  PK(id) : uuid
+  FK(analysis_model_id) : uuid
+  FK(question_id) : uuid
+  FK(option_id) : uuid
+  rule_type : text
+  weight : numeric
+  config_json : json
+}
+
+Table(trait_threshold) {
+  PK(id) : uuid
+  FK(trait_dimension_id) : uuid
+  label : text
+  min_value : numeric
+  max_value : numeric
+  narrative_md : text
+}
+
+Table(assessment_session) {
+  PK(id) : uuid
+  FK(questionnaire_version_id) : uuid
+  FK(subject_profile_id) : uuid
+  FK(user_id) : text (nullable)
+  FK(assessment_batch_id) : uuid (nullable)
+  status : text
+  started_at : datetime
+  completed_at : datetime
+}
+
+Table(response) {
+  PK(id) : uuid
+  FK(assessment_session_id) : uuid
+  FK(question_id) : uuid
+  FK(questionnaire_item_id) : uuid
+  FK(selected_option_id) : uuid
+  value_numeric : numeric
+  value_boolean : boolean
+  value_text : text
+  raw_payload_json : json
+}
+
+Table(response_trait_component) {
+  PK(id) : uuid
+  FK(response_id) : uuid
+  FK(analysis_model_id) : uuid
+  FK(dimension_id) : uuid
+  FK(composite_id) : uuid
+  contribution_value : numeric
+  weight_used : numeric
+  rule_reference : text
+}
+
+Table(assessment_batch) {
+  PK(id) : uuid
+  FK(subject_profile_id) : uuid
+  FK(questionnaire_version_id) : uuid
+  label : text
+  aggregation_method : text
+  run_count : int
+  window_start : datetime
+  window_end : datetime
+  metadata_json : json
+}
+
+Table(analysis_run) {
+  PK(id) : uuid
+  FK(assessment_session_id) : uuid (nullable)
+  FK(assessment_batch_id) : uuid (nullable)
+  FK(analysis_model_id) : uuid
+  score_version : int
+  status : text
+  started_at : datetime
+  completed_at : datetime
+  warnings_json : json
+}
+
+Table(trait_score) {
+  PK(id) : uuid
+  FK(analysis_run_id) : uuid
+  FK(dimension_id) : uuid
+  raw_score : numeric
+  normalized_score : numeric
+  percentile : numeric
+}
+
+Table(composite_score) {
+  PK(id) : uuid
+  FK(analysis_run_id) : uuid
+  FK(composite_id) : uuid
+  value : numeric
+  normalized_value : numeric
+}
+
+Table(analysis_report) {
+  PK(id) : uuid
+  FK(analysis_run_id) : uuid
+  format : text
+  payload_json : json
+  storage_url : text
+}
+
+Table(questionnaire_event_log) {
+  PK(id) : uuid
+  FK(assessment_session_id) : uuid
+  event_type : text
+  payload_json : json
+  created_at : datetime
+}
+
+Table(system_setting) {
+  PK(key) : text
+  value_json : json
+  updated_at : datetime
+}
+
+' Relationships
+User "1" -- "0..1" subject_profile : owns >
+User "1" -- "0..*" assessment_session : initiates >
+subject_profile "1" -- "0..*" assessment_session : participates >
+subject_profile "1" -- "0..*" assessment_batch : benchmarks >
+assessment_batch "1" -- "0..*" assessment_session : includes >
+
+questionnaire "1" -- "1..*" questionnaire_version : versions >
+questionnaire_version "1" -- "1..*" questionnaire_item : orders >
+questionnaire_version "1" -- "0..*" question_branch_rule : branching >
+questionnaire_version "1" -- "0..*" assessment_batch : batched >
+
+question_bank_item "1" -- "0..*" question_option : options >
+question_bank_item "1" -- "1..*" questionnaire_item : referenced >
+
+analysis_model "1" -- "0..*" trait_dimension : has >
+analysis_model "1" -- "0..*" trait_composite : aggregates >
+analysis_model "1" -- "0..*" question_trait_mapping : rules >
+trait_dimension "1" -- "0..*" trait_threshold : bands >
+
+question_bank_item "1" -- "0..*" question_trait_mapping : scored_by >
+question_option "1" -- "0..*" question_trait_mapping : option_rule >
+
+assessment_session "1" -- "1..*" response : answers >
+questionnaire_item "1" -- "0..*" response : captured >
+question_option "1" -- "0..*" response : selected >
+
+response "1" -- "0..*" response_trait_component : contributes >
+analysis_model "1" -- "0..*" response_trait_component : uses >
+trait_dimension "1" -- "0..*" response_trait_component : dimension >
+trait_composite "1" -- "0..*" response_trait_component : composite >
+
+assessment_session "1" -- "0..*" analysis_run : per_session >
+assessment_batch "1" -- "0..*" analysis_run : aggregated >
+analysis_model "1" -- "0..*" analysis_run : run >
+
+analysis_run "1" -- "0..*" trait_score : dimension_score >
+analysis_run "1" -- "0..*" composite_score : composite_score >
+analysis_run "1" -- "0..1" analysis_report : report >
+
+assessment_session "1" -- "0..*" questionnaire_event_log : events >
+
+@enduml

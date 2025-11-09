@@ -1,0 +1,28 @@
+import {
+  MainHeader,
+  MainHeaderContentWrapper,
+} from "@/components/landing/MainHeader";
+import { Footer } from "@/components/landing/Footer";
+
+export default function DocsPage() {
+  return (
+    <>
+      <MainHeader />
+      <MainHeaderContentWrapper>
+        <main className="mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-center px-4 pt-16 pb-8 sm:py-16 md:py-24">
+          <div className="w-full max-w-5xl">
+            <div className="text-center">
+              <h2 className="mt-0 text-2xl font-bold tracking-tight sm:mt-0 sm:text-3xl">
+                Documentation
+              </h2>
+              <p className="text-muted-foreground mx-auto mt-0.5 max-w-2xl text-base sm:mt-1">
+                Coming soon
+              </p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </MainHeaderContentWrapper>
+    </>
+  );
+}
