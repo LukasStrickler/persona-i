@@ -47,7 +47,7 @@ fetch_all_review_comments_rest() {
   
   # Parse owner/repo using utils
   local owner repo
-  read owner repo <<< "$(parse_owner_repo "$owner_repo")"
+  read -r owner repo <<< "$(parse_owner_repo "$owner_repo")"
   
   log_verbose "Fetching all review comments for PR #${pr_number} using REST API..."
   log_verbose "Repository: ${owner}/${repo}"
@@ -120,7 +120,7 @@ fetch_resolved_status_simple() {
   
   # Parse owner/repo using utils
   local owner repo
-  read owner repo <<< "$(parse_owner_repo "$owner_repo")"
+  read -r owner repo <<< "$(parse_owner_repo "$owner_repo")"
   
   log_verbose "Fetching resolved status for review comments using GraphQL..."
   
@@ -198,7 +198,7 @@ fetch_issue_comments() {
   
   # Parse owner/repo using utils
   local owner repo
-  read owner repo <<< "$(parse_owner_repo "$owner_repo")"
+  read -r owner repo <<< "$(parse_owner_repo "$owner_repo")"
   
   # Use GitHub API to get issue comments (PR comments that are not line-specific)
   # Note: PRs are also issues, so we use /issues/{pr_number}/comments

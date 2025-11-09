@@ -167,7 +167,7 @@ export default function AccountPage() {
               Manage your account settings
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 px-6 pt-2 pb-0 pb-2">
+          <CardContent className="space-y-4 px-6 pt-2 pb-2">
             <div className="space-y-3">
               <div>
                 <p className="text-muted-foreground mb-1 text-sm font-medium">
@@ -254,7 +254,7 @@ export default function AccountPage() {
             Manage your account settings
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 px-6 pt-2 pb-0 pb-2">
+        <CardContent className="space-y-4 px-6 pt-2 pb-2">
           <div className="space-y-3">
             <div>
               <p className="text-muted-foreground mb-1 text-sm font-medium">

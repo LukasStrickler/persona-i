@@ -82,7 +82,7 @@ if [ -z "$OWNER_REPO" ]; then
 fi
 
 # Parse owner/repo using utils
-read OWNER REPO <<< "$(parse_owner_repo "$OWNER_REPO")"
+read -r OWNER REPO <<< "$(parse_owner_repo "$OWNER_REPO")"
 
 log_info "Repository: ${OWNER}/${REPO}"
 log_info "PR: #${PR_NUMBER}"

@@ -159,13 +159,7 @@ export async function POST(request: Request) {
     }
 
     // Extract form data (already validated by contactFormSchema)
-    const {
-      [honeypotFieldName]: _honeypot,
-      hCaptchaToken: _captcha,
-      ...formData
-    } = payload;
-    void _honeypot;
-    void _captcha;
+    const { [honeypotFieldName]: _, hCaptchaToken: __, ...formData } = payload;
 
     // Check if contact email is configured
     if (!env.CONTACT_EMAIL) {

@@ -10,9 +10,23 @@ const urlSchema = () =>
   z.string().refine(
     (value) => {
       try {
+        // Normalize file: URLs to file:/// format for proper URL parsing
+        // file:./path or file:path should become file:///path
+        let normalizedValue = value;
+        if (value.toLowerCase().startsWith("file:")) {
+          const path = value.slice(5); // Remove "file:" prefix
+          // Normalize to file:/// format (three slashes for absolute paths)
+          // Handle relative paths like ./db.sqlite or db.sqlite
+          const normalizedPath = path.startsWith("/")
+            ? path
+            : path.startsWith("./")
+              ? path.slice(1) // Remove leading ./
+              : `/${path}`; // Add leading / for relative paths
+          normalizedValue = `file://${normalizedPath}`;
+        }
         // Use URL parser for robust validation
         // This handles case-insensitive schemes and validates URL structure
-        const url = new URL(value);
+        const url = new URL(normalizedValue);
         // Allow known database/file schemes that may not be standard
         const allowedSchemes = [
           "http",

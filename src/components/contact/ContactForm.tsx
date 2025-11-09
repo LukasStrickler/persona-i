@@ -85,7 +85,11 @@ function generateSecret(): string | null {
     try {
       const array = new Uint8Array(16);
       crypto.getRandomValues(array);
-      const randomString = btoa(String.fromCharCode(...array));
+      const randomString = btoa(
+        Array.from(array)
+          .map((b) => String.fromCharCode(b))
+          .join(""),
+      );
       return `${randomString}-${Date.now().toString(36)}`;
     } catch (error) {
       console.warn("Cryptographic random generation failed:", error);
