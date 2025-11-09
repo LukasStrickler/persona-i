@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -61,13 +62,9 @@ export default function AccountPage() {
           setUser(userData as User);
         } else {
           // Redirect to login with callback to account page
-          if (isMounted) {
-            void router.push("/login?redirect=/account");
-          }
+          void router.push("/login?redirect=/account");
         }
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching session:", error);
         if (isMounted) {
@@ -136,7 +133,8 @@ export default function AccountPage() {
     } catch (error) {
       console.error("Error deleting account:", error);
       if (mountedRef.current) {
-        alert("Failed to delete account. Please try again.");
+        // Use toast for better UX instead of alert()
+        toast.error("Failed to delete account. Please try again.");
         setIsDeleting(false);
       }
     }

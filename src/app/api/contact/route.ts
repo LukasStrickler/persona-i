@@ -86,7 +86,7 @@ function getCSRFTokenFromCookie(cookieHeader: string | null): string | null {
 
   if (!secretCookie) return null;
 
-  const value = secretCookie.split("=")[1];
+  const value = secretCookie.split("=").slice(1).join("=");
   return value ? decodeURIComponent(value) : null;
 }
 

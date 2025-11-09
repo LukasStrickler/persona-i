@@ -110,13 +110,7 @@ function AuthErrorContent() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => {
-              if (window.history.length > 1) {
-                void router.back();
-              } else {
-                void router.push("/");
-              }
-            }}
+            onClick={() => void router.back()}
             className="w-full"
           >
             Go Back

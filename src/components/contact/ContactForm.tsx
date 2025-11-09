@@ -96,18 +96,8 @@ function generateSecret(): string | null {
 }
 
 export function ContactForm({ siteKey }: ContactFormProps) {
-  // Validate siteKey - show error if missing
-  if (!siteKey || siteKey.trim() === "") {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Configuration Error</AlertTitle>
-        <AlertDescription>
-          hCaptcha site key is missing. Please contact the site administrator.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Compute misconfiguration flag (must be after hooks)
+  const isMisconfigured = !siteKey || siteKey.trim() === "";
 
   const [secret, setSecret] = React.useState<string | null>(null);
   const [submission, setSubmission] = React.useState<SubmissionState>({
@@ -140,8 +130,10 @@ export function ContactForm({ siteKey }: ContactFormProps) {
     shouldFocusError: true,
   });
 
-  // Initialize CSRF secret on mount
+  // Initialize CSRF secret on mount (only if not misconfigured)
   React.useEffect(() => {
+    if (isMisconfigured) return;
+
     const ensureSecret = () => {
       const existing = getCookie(SECRET_COOKIE_NAME);
       if (existing) {
@@ -160,7 +152,7 @@ export function ContactForm({ siteKey }: ContactFormProps) {
     };
 
     ensureSecret();
-  }, []);
+  }, [isMisconfigured]);
 
   // Cleanup timeout on unmount
   React.useEffect(() => {
@@ -272,9 +264,9 @@ export function ContactForm({ siteKey }: ContactFormProps) {
     setSubmission({ status: "error", errorCode: "captcha_unavailable" });
   }, [resetCaptcha]);
 
-  // Watch for captcha to be ready and execute if needed
+  // Watch for captcha to be ready and execute if needed (only if not misconfigured)
   React.useEffect(() => {
-    if (!shouldLoadCaptcha || !pendingPayloadRef.current) {
+    if (isMisconfigured || !shouldLoadCaptcha || !pendingPayloadRef.current) {
       return;
     }
 
@@ -317,7 +309,7 @@ export function ContactForm({ siteKey }: ContactFormProps) {
       clearInterval(checkInterval);
       clearTimeout(timeout);
     };
-  }, [shouldLoadCaptcha, handleCaptchaError]);
+  }, [isMisconfigured, shouldLoadCaptcha, handleCaptchaError]);
 
   const onSubmit = async (values: ContactFormValues) => {
     if (!secret) {
@@ -393,6 +385,19 @@ export function ContactForm({ siteKey }: ContactFormProps) {
     !!form.formState.errors.email ||
     !!form.formState.errors.phone ||
     !!form.formState.errors.message;
+
+  // Show error if misconfigured (after all hooks)
+  if (isMisconfigured) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Configuration Error</AlertTitle>
+        <AlertDescription>
+          hCaptcha site key is missing. Please contact the site administrator.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="bg-background/40 border-primary/10 rounded-lg border px-6 py-4 transition-colors sm:px-8">

@@ -25,10 +25,10 @@ const urlSchema = () =>
           "mysql",
         ];
         const scheme = url.protocol.replace(":", "").toLowerCase();
-        return allowedSchemes.includes(scheme) || value.startsWith("file:");
+        return allowedSchemes.includes(scheme);
       } catch {
-        // If URL parsing fails, check if it's a file: path (which may not have //)
-        return value.match(/^[a-z][a-z0-9+.-]*:(\/\/)?.+/i) !== null;
+        // If URL parsing fails, it's invalid
+        return false;
       }
     },
     {

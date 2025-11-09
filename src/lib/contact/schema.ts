@@ -20,7 +20,16 @@ export const contactBaseSchema = z.object({
         .min(2, "Name must be at least 2 characters")
         .max(100, "Name must be at most 100 characters"),
     ),
-  email: z.string().email("Please enter a valid email address").trim(),
+  email: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(
+      z
+        .string()
+        .refine((val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+          message: "Please enter a valid email address",
+        }),
+    ),
   phone: z
     .string()
     .regex(/^[\d\s\-\+\(\)]*$/, "Please enter a valid phone number")
