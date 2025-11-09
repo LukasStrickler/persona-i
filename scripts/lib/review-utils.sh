@@ -17,11 +17,11 @@ log_success() {
 }
 
 log_info() {
-  echo "🔍 $1"
+  echo "🔍 $1" >&2
 }
 
 log_warning() {
-  echo "⚠️  $1"
+  echo "⚠️  $1" >&2
 }
 
 # Ensure review directory exists

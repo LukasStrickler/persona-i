@@ -53,3 +53,6 @@ yarn-error.log*
 
 # CodeRabbit reviews
 .coderabbit/
+
+# PR comments
+.github/pr-comments/
