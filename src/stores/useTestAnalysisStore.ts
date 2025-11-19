@@ -837,7 +837,7 @@ function createStore(slug: string) {
               return;
             }
 
-            set((s) => {
+            set((s: WritableDraft<TestAnalysisState>) => {
               s._syncInProgress = true;
             });
 
@@ -916,7 +916,7 @@ function createStore(slug: string) {
           },
 
           setUserSessionSelection: (sessionIds) => {
-            set((state: WritableDraft<TestAnalysisState>) => {
+            set((state) => {
               if (sessionIds.length === 0) {
                 // Fallback to latest completed session (smart default)
                 const allUserResponses = Array.from(
@@ -974,7 +974,7 @@ function createStore(slug: string) {
 
           // Invalidation
           invalidateUserSessions: () => {
-            set((state: WritableDraft<TestAnalysisState>) => {
+            set((state) => {
               state.userSessions.clear();
               state.selection.selectedUserSessionIds.clear();
               state.filteredUserResponses = [];
@@ -986,7 +986,7 @@ function createStore(slug: string) {
           },
 
           invalidateAll: () => {
-            set((state: WritableDraft<TestAnalysisState>) => {
+            set((state) => {
               // Clear all questionnaire content
               state.questions.clear();
               // questionsByPosition is now computed on-demand, no need to clear it
