@@ -5,6 +5,7 @@ import {
   publicProcedure,
   protectedProcedure,
 } from "@/server/api/trpc";
+import { TRPCError } from "@trpc/server";
 import {
   response,
   assessmentSession,
@@ -26,11 +27,17 @@ export const responsesRouter = createTRPCRouter({
       });
 
       if (!session) {
-        throw new Error("Session not found");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Session not found",
+        });
       }
 
       if (session.userId !== ctx.user.id) {
-        throw new Error("Unauthorized - session does not belong to user");
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Unauthorized - session does not belong to user",
+        });
       }
 
       // Get all responses for this session
@@ -43,10 +50,39 @@ export const responsesRouter = createTRPCRouter({
     }),
 
   /**
-   * Get aggregated responses for analysis pages (public)
-   * Returns aggregated data for human sessions only (excludes AI/LLM models)
+   * Get aggregated responses for analysis pages (protected)
+   *
+   * PURPOSE & DATA FLOW:
+   * ===================
+   *
+   * This endpoint fetches the current user's own completed test sessions and responses
+   * for display on analysis pages (e.g., /tests/disc). It's called client-side via
+   * React Query in `useTestAnalysisData` hook.
+   *
+   * Data Flow:
+   * 1. Client calls this endpoint via `api.responses.getAggregated.useQuery()`
+   * 2. Returns: { sessions: [...], responses: [...] } for current user only
+   * 3. Data flows to `useTestAnalysisData` hook → `loadUserData()` action
+   * 4. `loadUserData()` stores data in Zustand store: `state.userSessions` Map
+   * 5. Store data is used by analysis components:
+   *    - TestAnalysisClient (main analysis page component)
+   *    - StoreDataVisualization (debug/development view)
+   *    - Analysis helpers (getResponseDistribution, getAggregatedBySection, etc.)
+   *    - Selectors (useHumanResponses, useSelectedUserSessions, etc.)
+   *
+   * Privacy & Security:
+   * - Only returns data for `ctx.user.id` (current authenticated user)
+   * - Filters by `assessmentSession.userId === ctx.user.id`
+   * - No access to other users' sessions or responses
+   * - Protected endpoint (requires authentication)
+   *
+   * Usage Context:
+   * - Analysis pages show user's own test results over time
+   * - Allows comparing multiple completed sessions
+   * - Used for charts, distributions, and response analysis
+   * - Data is persisted in Zustand store with localStorage for offline access
    */
-  getAggregated: publicProcedure
+  getAggregated: protectedProcedure
     .input(
       z.object({
         questionnaireId: z.string(),
@@ -70,55 +106,16 @@ export const responsesRouter = createTRPCRouter({
         };
       }
 
-      // Get all human subject profiles
-      // Using direct query builder for better performance with index
-      let humanProfiles;
-      try {
-        humanProfiles = await ctx.db
-          .select({ id: subjectProfile.id })
-          .from(subjectProfile)
-          .where(eq(subjectProfile.subjectType, "human"));
-      } catch (error) {
-        logger.error("Failed to fetch human subject profiles:", error);
-        // Return empty result on error rather than crashing
-        return {
-          totalSessions: 0,
-          questionnaireId: input.questionnaireId,
-          sessions: [],
-          responses: [],
-        };
-      }
-
-      const humanProfileIds = humanProfiles.map((p) => p.id);
-
-      logger.dev("[QUERY_AGGREGATED] Human profiles:", {
-        questionnaireId: input.questionnaireId,
-        humanProfileCount: humanProfileIds.length,
-        humanProfileIds: humanProfileIds.slice(0, 5), // Sample first 5
-      });
-
-      if (humanProfileIds.length === 0) {
-        logger.dev(
-          "[QUERY_AGGREGATED] No human profiles found, returning empty",
-        );
-        return {
-          totalSessions: 0,
-          questionnaireId: input.questionnaireId,
-          sessions: [],
-          responses: [],
-        };
-      }
-
-      // Get all completed sessions for this questionnaire version from human subjects only
-      // Include completedAt and other metadata for default selection logic
-      logger.dev("[QUERY_AGGREGATED] Querying sessions:", {
+      // Get user's own completed sessions for this questionnaire version
+      // Filter by userId to ensure users only see their own data
+      logger.dev("[QUERY_AGGREGATED] Querying user's own sessions:", {
         questionnaireId: input.questionnaireId,
         versionId: activeVersion.id,
+        userId: ctx.user.id,
         status: "completed",
-        humanProfileIdsCount: humanProfileIds.length,
       });
 
-      const humanSessions = await ctx.db
+      const userSessions = await ctx.db
         .select({
           id: assessmentSession.id,
           completedAt: assessmentSession.completedAt,
@@ -132,13 +129,13 @@ export const responsesRouter = createTRPCRouter({
           and(
             eq(assessmentSession.questionnaireVersionId, activeVersion.id),
             eq(assessmentSession.status, "completed"),
-            inArray(assessmentSession.subjectProfileId, humanProfileIds),
+            eq(assessmentSession.userId, ctx.user.id), // Only current user's sessions
           ),
         );
 
-      logger.dev("[QUERY_AGGREGATED] Sessions found:", {
-        sessionCount: humanSessions.length,
-        sessions: humanSessions.map((s) => ({
+      logger.dev("[QUERY_AGGREGATED] User's sessions found:", {
+        sessionCount: userSessions.length,
+        sessions: userSessions.map((s) => ({
           id: s.id.slice(0, 8),
           status: s.status,
           subjectProfileId: s.subjectProfileId,
@@ -147,7 +144,7 @@ export const responsesRouter = createTRPCRouter({
         })),
       });
 
-      const sessionIds = humanSessions.map((s) => s.id);
+      const sessionIds = userSessions.map((s) => s.id);
 
       logger.dev("[QUERY_AGGREGATED] Session IDs to query:", {
         sessionIdCount: sessionIds.length,
@@ -164,16 +161,16 @@ export const responsesRouter = createTRPCRouter({
         };
       }
 
-      // Get all responses from human sessions
-      logger.dev("[QUERY_AGGREGATED] Querying responses for sessions");
-      const humanResponses = await ctx.db
+      // Get responses from user's own sessions only
+      logger.dev("[QUERY_AGGREGATED] Querying responses for user's sessions");
+      const userResponses = await ctx.db
         .select()
         .from(response)
         .where(inArray(response.assessmentSessionId, sessionIds));
 
-      logger.dev("[QUERY_AGGREGATED] Responses found:", {
-        responseCount: humanResponses.length,
-        responsesBySessionId: humanResponses.reduce(
+      logger.dev("[QUERY_AGGREGATED] User's responses found:", {
+        responseCount: userResponses.length,
+        responsesBySessionId: userResponses.reduce(
           (acc, r) => {
             acc[r.assessmentSessionId] = (acc[r.assessmentSessionId] ?? 0) + 1;
             return acc;
@@ -184,30 +181,33 @@ export const responsesRouter = createTRPCRouter({
 
       // Log session and response details for debugging
       const responsesBySession = new Map<string, number>();
-      for (const response of humanResponses) {
+      for (const response of userResponses) {
         const count = responsesBySession.get(response.assessmentSessionId) ?? 0;
         responsesBySession.set(response.assessmentSessionId, count + 1);
       }
 
       // Log session and response details for debugging
-      logger.dev(`[getAggregated] Questionnaire ${input.questionnaireId}:`, {
-        totalSessions: humanSessions.length,
-        sessions: humanSessions.map((s) => ({
-          id: s.id.slice(0, 8),
-          completedAt: s.completedAt,
-          responseCount: responsesBySession.get(s.id) ?? 0,
-        })),
-        totalResponses: humanResponses.length,
-        sessionsWithResponses: responsesBySession.size,
-        sessionsWithoutResponses:
-          humanSessions.length - responsesBySession.size,
-      });
+      logger.dev(
+        `[getAggregated] Questionnaire ${input.questionnaireId} (user ${ctx.user.id}):`,
+        {
+          totalSessions: userSessions.length,
+          sessions: userSessions.map((s) => ({
+            id: s.id.slice(0, 8),
+            completedAt: s.completedAt,
+            responseCount: responsesBySession.get(s.id) ?? 0,
+          })),
+          totalResponses: userResponses.length,
+          sessionsWithResponses: responsesBySession.size,
+          sessionsWithoutResponses:
+            userSessions.length - responsesBySession.size,
+        },
+      );
 
       return {
-        totalSessions: humanSessions.length,
+        totalSessions: userSessions.length,
         questionnaireId: input.questionnaireId,
-        sessions: humanSessions,
-        responses: humanResponses,
+        sessions: userSessions,
+        responses: userResponses,
       };
     }),
 

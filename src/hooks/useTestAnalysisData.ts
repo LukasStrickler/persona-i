@@ -63,9 +63,11 @@ export function useTestAnalysisData(
   const loadUserData = store.getState().loadUserData;
   const invalidateAll = store.getState().invalidateAll;
   const cacheMeta = storeState.cacheMeta;
-  const _syncInProgress = storeState._syncInProgress;
-  const _performanceMetrics = storeState._performanceMetrics;
-  const _syncErrors = storeState._syncErrors;
+
+  // Subscribe to reactive sync state values (not snapshots)
+  const _syncInProgress = store((state) => state._syncInProgress);
+  const _performanceMetrics = store((state) => state._performanceMetrics);
+  const _syncErrors = store((state) => state._syncErrors);
 
   // Helper: Check if we have valid cache synchronously (before hydration completes)
   // This allows immediate rendering with cached data
@@ -572,7 +574,9 @@ export function useTestAnalysisData(
     }
   }, [shouldFetchUserData, userData?.responses?.length, isHydrated]);
 
-  const hasUserSessionsLoaded = storeState.userSessions.size > 0;
+  // Subscribe to userSessions size to get reactive updates
+  const userSessionsSize = store((state) => state.userSessions.size);
+  const hasUserSessionsLoaded = userSessionsSize > 0;
   const shouldSyncUserSessions =
     !!questionnaireData?.id && hasUserSessionsLoaded;
 
@@ -580,7 +584,7 @@ export function useTestAnalysisData(
     cacheLogger.dev(
       `[User Sessions] SYNC ENABLED: questionnaireId=${questionnaireData.id}`,
       {
-        existingSessionsCount: storeState.userSessions.size,
+        existingSessionsCount: userSessionsSize,
       },
     );
   } else if (questionnaireData?.id && !hasUserSessionsLoaded) {

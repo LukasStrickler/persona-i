@@ -64,6 +64,16 @@ export function SpringSlider({
   React.useEffect(() => {
     if (!isDragging.current && width > 0) {
       const range = max - min;
+      // Guard against division by zero when max === min
+      if (range === 0) {
+        // If min === max, position at start (0)
+        animate(x, 0, {
+          type: "spring",
+          stiffness: 300,
+          damping: 30,
+        });
+        return;
+      }
       const percent = (value - min) / range;
       const targetX = percent * width;
 
@@ -84,12 +94,14 @@ export function SpringSlider({
     _event: MouseEvent | TouchEvent | PointerEvent,
     _info: PanInfo,
   ) => {
-    if (!trackRef.current) return;
+    if (!trackRef.current || width <= 0) return;
 
     // Calculate value from current x
     const currentX = x.get();
     const percent = Math.max(0, Math.min(1, currentX / width));
-    const rawValue = percent * (max - min) + min;
+    const range = max - min;
+    // Guard against division by zero when max === min
+    const rawValue = range === 0 ? min : percent * range + min;
 
     // We don't snap during drag, just pass the raw value or rounded to a small precision if needed
     // But usually for a slider we want to see the continuous value or the stepped value?

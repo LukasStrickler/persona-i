@@ -17,7 +17,13 @@ import { getServerTRPC } from "@/server/api/caller";
 
 export default async function TestsPage() {
   const trpc = await getServerTRPC();
-  const questionnaires = await trpc.questionnaires.getPublic();
+  let questionnaires: Awaited<ReturnType<typeof trpc.questionnaires.getPublic>>;
+  try {
+    questionnaires = await trpc.questionnaires.getPublic();
+  } catch (error) {
+    console.error("Failed to fetch questionnaires:", error);
+    questionnaires = [];
+  }
 
   return (
     <>

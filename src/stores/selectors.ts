@@ -80,56 +80,28 @@ export const useHumanResponses = () => {
 
 /**
  * Get selected model IDs (memoized to prevent infinite loops)
+ * Subscribes to the actual IDs array (sorted for stability) to detect changes even when size stays the same
  */
 export const useSelectedModels = () => {
   const store = useStore();
-  const size = store((state) => state.selection.selectedModelIds.size);
-  const prevKeysRef = useRef<string>("");
-  const cachedArrayRef = useRef<string[]>([]);
-
-  return useMemo(() => {
-    const state = store.getState();
-    const currentKeys = Array.from(state.selection.selectedModelIds)
-      .sort()
-      .join(",");
-
-    // Only update if keys actually changed
-    if (currentKeys !== prevKeysRef.current) {
-      prevKeysRef.current = currentKeys;
-      cachedArrayRef.current = Array.from(state.selection.selectedModelIds);
-      return cachedArrayRef.current;
-    }
-
-    // Return cached array if keys haven't changed
-    return cachedArrayRef.current;
-  }, [size, store]);
+  // Subscribe to sorted array of IDs with shallow comparison to detect ID changes even when size is unchanged
+  const selectedIds = useStoreShallow(store, (state) =>
+    Array.from(state.selection.selectedModelIds).sort(),
+  );
+  return selectedIds;
 };
 
 /**
  * Get selected user session IDs (memoized to prevent infinite loops)
+ * Subscribes to the actual IDs array (sorted for stability) to detect changes even when size stays the same
  */
 export const useSelectedUserSessions = () => {
   const store = useStore();
-  const size = store((state) => state.selection.selectedUserSessionIds.size);
-  const prevKeysRef = useRef<string>("");
-  const cachedArrayRef = useRef<string[]>([]);
-
-  return useMemo(() => {
-    const state = store.getState();
-    const currentKeys = Array.from(state.selection.selectedUserSessionIds)
-      .sort()
-      .join(",");
-
-    if (currentKeys !== prevKeysRef.current) {
-      prevKeysRef.current = currentKeys;
-      cachedArrayRef.current = Array.from(
-        state.selection.selectedUserSessionIds,
-      );
-      return cachedArrayRef.current;
-    }
-
-    return cachedArrayRef.current;
-  }, [size, store]);
+  // Subscribe to sorted array of IDs with shallow comparison to detect ID changes even when size is unchanged
+  const selectedIds = useStoreShallow(store, (state) =>
+    Array.from(state.selection.selectedUserSessionIds).sort(),
+  );
+  return selectedIds;
 };
 
 /**
@@ -453,44 +425,10 @@ export const useResponsesBySection = () => {
     (state) => state.filteredUserResponses,
   );
   const questionsSize = store((state) => state.questions.size);
-  const prevResultRef = useRef<
-    Array<{
-      section: string;
-      items: Array<{
-        question: Question;
-        modelResponses: Array<{
-          modelId: string;
-          displayName: string;
-          value: string | number | boolean | string[] | null;
-          valueType: string | null;
-        }>;
-        userResponses: Array<{
-          sessionId: string;
-          displayName: string;
-          value: string | number | boolean | string[] | null;
-          valueType: string | null;
-        }>;
-      }>;
-    }>
-  >([]);
-  const prevKeysRef = useRef<string>("");
 
   return useMemo(() => {
     const state = store.getState();
     const questionsByPosition = state.getQuestionsByPosition();
-    const currentKeys = questionsByPosition
-      .map((q) => q.id)
-      .sort()
-      .join(",");
-
-    // Create a key for responses to detect changes
-    const responsesKey = `${modelResponses.length}:${userResponses.length}`;
-    const fullKey = `${currentKeys}:${responsesKey}`;
-
-    // Return cached result if data hasn't changed
-    if (fullKey === prevKeysRef.current && prevResultRef.current.length > 0) {
-      return prevResultRef.current;
-    }
 
     const sections = new Map<
       string,
@@ -571,8 +509,6 @@ export const useResponsesBySection = () => {
       items,
     }));
 
-    prevKeysRef.current = fullKey;
-    prevResultRef.current = result;
     return result;
   }, [questionsSize, modelResponses, userResponses, store]);
 };

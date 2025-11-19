@@ -320,12 +320,19 @@ Save multiple questionnaire responses in a single transaction. Used during test 
       {
         "questionId": "question-uuid",
         "value": "response-value",
-        "selectedOptionId": "option-uuid"
+        "selectedOptionId": "option-uuid", // For single_choice questions
+        "selectedOptionIds": ["option-uuid-1", "option-uuid-2"] // For multi_choice questions
       }
     ]
   }
 }
 ```
+
+**Field Mapping by Question Type**:
+
+- `single_choice`: Use `selectedOptionId` (string, optional)
+- `multi_choice`: Use `selectedOptionIds` (string[], optional)
+- `scalar`, `boolean`, `text`: Neither field is used
 
 **Response** (200 OK):
 
@@ -401,8 +408,8 @@ Save multiple questionnaire responses in a single transaction. Used during test 
 
 **Question Types Supported**:
 
-- `single_choice`: Requires `value` (string) and `selectedOptionId` (optional)
-- `multi_choice`: Requires `value` (string[]) and `selectedOptionIds` (optional)
+- `single_choice`: Requires `value` (string) and optionally `selectedOptionId` (string) - the ID of the selected option
+- `multi_choice`: Requires `value` (string[]) and optionally `selectedOptionIds` (string[]) - array of IDs for selected options
 - `scalar`: Requires `value` (number)
 - `boolean`: Requires `value` (boolean)
 - `text`: Requires `value` (string)
@@ -426,11 +433,18 @@ Dedicated endpoint for beforeunload handler. Accepts simple JSON format compatib
     {
       "questionId": "question-uuid",
       "value": "response-value",
-      "selectedOptionId": "option-uuid"
+      "selectedOptionId": "option-uuid", // For single_choice questions
+      "selectedOptionIds": ["option-uuid-1", "option-uuid-2"] // For multi_choice questions
     }
   ]
 }
 ```
+
+**Field Mapping by Question Type**:
+
+- `single_choice`: Use `selectedOptionId` (string, optional)
+- `multi_choice`: Use `selectedOptionIds` (string[], optional)
+- `scalar`, `boolean`, `text`: Neither field is used
 
 **Response** (200 OK):
 

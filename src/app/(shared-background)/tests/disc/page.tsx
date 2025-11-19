@@ -128,8 +128,10 @@ export default async function DiscTestPage() {
                         Continue Your Test
                       </CardTitle>
                       <CardDescription>
-                        You have {incompleteSessions.length} incomplete session
-                        {incompleteSessions.length > 1 ? "s" : ""}
+                        You have {incompleteSessions.length} incomplete{" "}
+                        {incompleteSessions.length === 1
+                          ? "session"
+                          : "sessions"}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

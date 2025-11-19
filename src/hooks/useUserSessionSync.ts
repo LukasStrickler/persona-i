@@ -33,21 +33,26 @@ export function useUserSessionSync({
     if (!enabled || !questionnaireId) return;
 
     // Track session count for onNewSession callback
+    // Handle both growth and shrink/reset cases to ensure new sessions are detected correctly
     const updateSessionCount = () => {
       const currentState = store.getState();
       const currentCount = currentState.userSessions.size;
       const previousCount = previousSessionCountRef.current;
 
-      if (currentCount > previousCount && onNewSession) {
-        const allIds = Array.from(currentState.userSessions.keys());
-        const newSessions = allIds.slice(previousCount);
+      // Always update the ref, even if count decreased (handles resets)
+      if (currentCount !== previousCount) {
+        if (currentCount > previousCount && onNewSession) {
+          // Count increased - find new sessions
+          const allIds = Array.from(currentState.userSessions.keys());
+          const newSessions = allIds.slice(previousCount);
 
-        for (const sessionId of newSessions) {
-          onNewSession(sessionId);
+          for (const sessionId of newSessions) {
+            onNewSession(sessionId);
+          }
         }
+        // Update ref for both growth and shrink cases
+        previousSessionCountRef.current = currentCount;
       }
-
-      previousSessionCountRef.current = currentCount;
     };
 
     // Initial sync

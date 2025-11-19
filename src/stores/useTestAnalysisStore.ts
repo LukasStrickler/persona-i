@@ -1195,6 +1195,37 @@ function createStore(slug: string) {
     };
 
     window.addEventListener("storage", handleStorage);
+
+    // Store cleanup function for this listener
+    //
+    // CLEANUP EXPLANATION:
+    // ====================
+    //
+    // These cleanup functions are stored on `store._cleanup` but are NOT automatically
+    // called. Stores are cached per slug in `storeInstances` Map and persist for the
+    // lifetime of the application.
+    //
+    // When cleanup would be needed:
+    // - During HMR (Hot Module Reload) in development - module reloads could create
+    //   duplicate listeners if stores are recreated
+    // - If implementing store eviction/destruction logic
+    // - If stores were recreated on navigation (currently they're singletons)
+    //
+    // Current state:
+    // - Cleanup is stored but never executed (stores are singletons)
+    // - Event listeners remain attached for app lifetime
+    // - In practice, this is fine since stores persist and aren't destroyed
+    //
+    // Future consideration:
+    // - If implementing store cleanup/eviction, call `store._cleanup?.()` before
+    //   removing from `storeInstances` Map
+    // - Or remove this code if stores will always be singletons
+    const cleanupStorage = () => {
+      window.removeEventListener("storage", handleStorage);
+    };
+    // Attach cleanup to store for potential future use (currently unused)
+    (store as typeof store & { _cleanup?: () => void })._cleanup =
+      cleanupStorage;
   }
 
   // Setup online/offline listeners
@@ -1214,6 +1245,27 @@ function createStore(slug: string) {
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+
+    // Store cleanup functions for these listeners
+    //
+    // NOTE: Same cleanup pattern as storage listener above - stored but not automatically
+    // called. See comment above for full explanation. These cleanup functions are
+    // chained together so calling `store._cleanup?.()` would remove all event listeners.
+    const cleanupOnline = () => {
+      window.removeEventListener("online", handleOnline);
+    };
+    const cleanupOffline = () => {
+      window.removeEventListener("offline", handleOffline);
+    };
+    // Attach cleanup to store for potential future use (currently unused)
+    // Chains with existing cleanup (storage listener) so one call removes all listeners
+    const storeWithCleanup = store as typeof store & { _cleanup?: () => void };
+    const existingCleanup = storeWithCleanup._cleanup;
+    storeWithCleanup._cleanup = () => {
+      existingCleanup?.();
+      cleanupOnline();
+      cleanupOffline();
+    };
   }
 
   return store;

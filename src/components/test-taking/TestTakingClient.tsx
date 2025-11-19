@@ -202,53 +202,6 @@ export function TestTakingClient({
     debouncedSave(questionId, value);
   };
 
-  const currentCategory = sections[currentCategoryIndex];
-  if (!currentCategory) {
-    return <div>No categories found</div>;
-  }
-
-  // Calculate progress
-  const totalQuestions = sessionData.items.length;
-  const answeredCount = Object.keys(responses).length;
-  const overallProgress = (answeredCount / totalQuestions) * 100;
-
-  // Calculate category-specific progress (for future use)
-  // const categoryAnsweredCount = currentCategory.items.filter(
-  //   (item) => responses[item.question.id] !== undefined,
-  // ).length;
-
-  // Check if all required questions in current category are answered
-  const requiredQuestionsInCategory = currentCategory.items.filter(
-    (item) => item.isRequired !== false,
-  );
-  const requiredAnsweredCount = requiredQuestionsInCategory.filter(
-    (item) => responses[item.question.id] !== undefined,
-  ).length;
-  const canProceedToNext =
-    requiredAnsweredCount === requiredQuestionsInCategory.length;
-
-  const handleNextCategory = () => {
-    if (currentCategoryIndex < sections.length - 1) {
-      setCurrentCategoryIndex((prev) => prev + 1);
-    }
-  };
-
-  const handlePreviousCategory = () => {
-    if (currentCategoryIndex > 0) {
-      setCurrentCategoryIndex((prev) => prev - 1);
-    }
-  };
-
-  // Scroll to top when category changes
-  React.useEffect(() => {
-    const scrollContainer = document.getElementById("main-scroll-container");
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, behavior: "instant" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "instant" });
-    }
-  }, [currentCategoryIndex]);
-
   // Beforeunload handler for best-effort auto-save
   // Use refs to avoid recreating handler on every response change
   const responsesRef = React.useRef(responses);
@@ -261,6 +214,16 @@ export function TestTakingClient({
     sessionDataRef.current = sessionData;
     sessionIdRef.current = sessionId;
   }, [responses, sessionData, sessionId]);
+
+  // Scroll to top when category changes
+  React.useEffect(() => {
+    const scrollContainer = document.getElementById("main-scroll-container");
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: "instant" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [currentCategoryIndex]);
 
   React.useEffect(() => {
     const handler = (_e: BeforeUnloadEvent) => {
@@ -297,6 +260,39 @@ export function TestTakingClient({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, []); // Empty deps - handler uses refs
+
+  // Check for valid category after all hooks are called (Rules of Hooks)
+  const currentCategory = sections[currentCategoryIndex];
+  if (!currentCategory) {
+    return <div>No categories found</div>;
+  }
+
+  // Calculate progress
+  const totalQuestions = sessionData.items.length;
+  const answeredCount = Object.keys(responses).length;
+  const overallProgress = (answeredCount / totalQuestions) * 100;
+
+  // Check if all required questions in current category are answered
+  const requiredQuestionsInCategory = currentCategory.items.filter(
+    (item) => item.isRequired !== false,
+  );
+  const requiredAnsweredCount = requiredQuestionsInCategory.filter(
+    (item) => responses[item.question.id] !== undefined,
+  ).length;
+  const canProceedToNext =
+    requiredAnsweredCount === requiredQuestionsInCategory.length;
+
+  const handleNextCategory = () => {
+    if (currentCategoryIndex < sections.length - 1) {
+      setCurrentCategoryIndex((prev) => prev + 1);
+    }
+  };
+
+  const handlePreviousCategory = () => {
+    if (currentCategoryIndex > 0) {
+      setCurrentCategoryIndex((prev) => prev - 1);
+    }
+  };
 
   const isLastCategory = currentCategoryIndex === sections.length - 1;
   const allQuestionsAnswered = answeredCount === totalQuestions;

@@ -98,10 +98,11 @@ export function MultiChoiceQuestion({
         <div className="grid gap-2">
           {question.config.options.map((option) => {
             const isSelected = selectedValues.has(option.value);
+            // Prevent deselecting when already at the minimum selection count
             const isDisabled =
               disabled ||
               (!isSelected && !canSelectMore) ||
-              (mustSelectMore && isSelected && currentCount <= minSelections);
+              (isSelected && currentCount <= minSelections);
 
             return (
               <motion.div

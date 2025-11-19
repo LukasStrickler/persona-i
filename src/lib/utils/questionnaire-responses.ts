@@ -42,11 +42,14 @@ export function buildResponsesPayload(
       const optionId = question.options?.find((o) => o.value === value)?.id;
       if (optionId) {
         responseObj.selectedOptionId = optionId;
-      } else if (process.env.NODE_ENV === "development") {
-        // Warn in development if option ID not found
-        logger.dev(
-          `[buildResponsesPayload] Option ID not found for single_choice question ${question.id} with value: ${String(value)}`,
-        );
+      } else {
+        // Skip this response as it's invalid - value doesn't match any option
+        if (process.env.NODE_ENV === "development") {
+          logger.dev(
+            `[buildResponsesPayload] Option ID not found for single_choice question ${question.id} with value: ${String(value)}. Skipping response.`,
+          );
+        }
+        continue;
       }
     }
 

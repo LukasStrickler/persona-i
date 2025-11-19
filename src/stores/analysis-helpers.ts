@@ -198,6 +198,19 @@ export function getResponseDistribution(
     const min = Math.min(...numericValues);
     const max = Math.max(...numericValues);
     const bins = 10;
+
+    // Guard against division by zero when all values are identical
+    if (min === max) {
+      // All values are the same - return a single bin with all counts
+      return [
+        {
+          bin: min,
+          count: numericValues.length,
+          label: `${min.toFixed(1)}`,
+        },
+      ];
+    }
+
     const binSize = (max - min) / bins;
 
     const histogram = Array.from({ length: bins }, () => 0);

@@ -678,6 +678,28 @@ export const questionnairesRouter = createTRPCRouter({
         throw new Error("Cannot modify responses for completed session");
       }
 
+      // Validate that questionId belongs to this session's questionnaire version
+      // questionnaireVersionId is not null in schema, but TypeScript needs help with type inference
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const questionnaireVersionId = session.questionnaireVersionId;
+      if (!questionnaireVersionId) {
+        throw new Error("Session missing questionnaire version");
+      }
+      const item = await ctx.db.query.questionnaireItem.findFirst({
+        where: and(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          eq(questionnaireItem.questionnaireVersionId, questionnaireVersionId),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          eq(questionnaireItem.questionId, input.questionId),
+        ),
+      });
+
+      if (!item) {
+        throw new Error(
+          "Question does not belong to this session's questionnaire",
+        );
+      }
+
       // Get question to determine type
       const question = await ctx.db.query.questionBankItem.findFirst({
         where: eq(questionBankItem.id, input.questionId),
@@ -800,6 +822,42 @@ export const questionnairesRouter = createTRPCRouter({
       if (session.status === "completed") {
         logger.error("[BATCH_SAVE] Cannot modify completed session");
         throw new Error("Cannot modify responses for completed session");
+      }
+
+      // Validate all questionIds belong to this session's questionnaire version
+      // questionnaireVersionId is not null in schema, but TypeScript needs help with type inference
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const questionnaireVersionId = session.questionnaireVersionId;
+      if (!questionnaireVersionId) {
+        throw new Error("Session missing questionnaire version");
+      }
+      const questionIds = input.responses.map((r) => r.questionId);
+      const validQuestionnaireItems = await ctx.db
+        .select()
+        .from(questionnaireItem)
+        .where(
+          and(
+            eq(
+              questionnaireItem.questionnaireVersionId,
+              questionnaireVersionId,
+            ),
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            inArray(questionnaireItem.questionId, questionIds),
+          ),
+        );
+
+      const validQuestionIds = new Set(
+        validQuestionnaireItems.map((item) => item.questionId),
+      );
+      const invalidQuestionIds = questionIds.filter(
+        (id) => !validQuestionIds.has(id),
+      );
+
+      if (invalidQuestionIds.length > 0) {
+        logger.error("[BATCH_SAVE] Invalid questionIds:", invalidQuestionIds);
+        throw new Error(
+          `Questions do not belong to this session's questionnaire: ${invalidQuestionIds.join(", ")}`,
+        );
       }
 
       const now = new Date();

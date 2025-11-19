@@ -44,18 +44,25 @@ async function seedQuestionnaireWithCategories(
       });
 
       // Add options for single choice questions
-      if (q.type === "single_choice" && q.options && Array.isArray(q.options)) {
-        for (let i = 0; i < q.options.length; i++) {
-          const option = q.options[i];
-          if (option) {
-            await db.insert(questionOption).values({
-              id: crypto.randomUUID(),
-              questionId,
-              label: option.label,
-              value: option.value,
-              position: i,
-              createdAt: new Date(),
-            });
+      // Options are stored in config.options, not q.options
+      if (q.type === "single_choice") {
+        const config = q.config as {
+          options?: Array<{ label: string; value: string }>;
+        };
+        const options = config?.options;
+        if (options && Array.isArray(options)) {
+          for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            if (option) {
+              await db.insert(questionOption).values({
+                id: crypto.randomUUID(),
+                questionId,
+                label: option.label,
+                value: option.value,
+                position: i,
+                createdAt: new Date(),
+              });
+            }
           }
         }
       }

@@ -3,8 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/components/providers/TRPCProvider";
-import { Button } from "@/components/ui/button";
-import type { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import type { VariantProps } from "class-variance-authority";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
