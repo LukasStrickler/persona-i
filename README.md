@@ -150,23 +150,23 @@ The application will be available at `http://localhost:3000`.
 
 #### Development
 
-| Command                  | Description                                      |
-| ------------------------ | ------------------------------------------------ |
-| `bun run dev`            | Start development server                         |
-| `bun run build`          | Build for production                             |
-| `bun run start`          | Start production server                          |
-| `bun run preview`        | Build and start production server                |
-| `bun run email`          | Start email preview server                       |
+| Command           | Description                       |
+| ----------------- | --------------------------------- |
+| `bun run dev`     | Start development server          |
+| `bun run build`   | Build for production              |
+| `bun run start`   | Start production server           |
+| `bun run preview` | Build and start production server |
+| `bun run email`   | Start email preview server        |
 
 #### Database
 
-| Command                  | Description                                      |
-| ------------------------ | ------------------------------------------------ |
-| `bun run db:setup`       | Setup database with mock data                    |
-| `bun run db:generate`    | Generate database migrations                     |
-| `bun run db:migrate`     | Run database migrations                          |
-| `bun run db:push`        | Push schema changes to database                  |
-| `bun run db:studio`      | Open Drizzle Studio for database management      |
+| Command               | Description                                 |
+| --------------------- | ------------------------------------------- |
+| `bun run db:setup`    | Setup database with mock data               |
+| `bun run db:generate` | Generate database migrations                |
+| `bun run db:migrate`  | Run database migrations                     |
+| `bun run db:push`     | Push schema changes to database             |
+| `bun run db:studio`   | Open Drizzle Studio for database management |
 
 #### Code Quality
 
@@ -183,26 +183,26 @@ The application will be available at `http://localhost:3000`.
 
 #### Documentation & Reviews
 
-| Command                  | Description                                      |
-| ------------------------ | ------------------------------------------------ |
-| `bun run docs:check`     | Check documentation updates needed               |
-| `bun run review:task`    | Review uncommitted changes                       |
-| `bun run review:pr`      | Review PR changes                                |
-| `bun run review:read`    | Read latest review results                       |
-| `bun run review:cleanup` | Clean up review files                            |
+| Command                  | Description                        |
+| ------------------------ | ---------------------------------- |
+| `bun run docs:check`     | Check documentation updates needed |
+| `bun run review:task`    | Review uncommitted changes         |
+| `bun run review:pr`      | Review PR changes                  |
+| `bun run review:read`    | Read latest review results         |
+| `bun run review:cleanup` | Clean up review files              |
 
 #### PR Comments
 
-| Command                              | Description                                      |
-| ------------------------------------ | ------------------------------------------------ |
-| `bun run pr:comments`                | Read PR comments                                 |
-| `bun run pr:comments:detect`         | Detect unresolved PR comments                    |
-| `bun run pr:comments:get`            | Get PR comments                                  |
-| `bun run pr:comments:resolve`        | Resolve PR comments                              |
-| `bun run pr:comments:resolve:interactive` | Resolve PR comments interactively            |
-| `bun run pr:comments:dismiss`        | Dismiss PR comments                              |
-| `bun run pr:comments:cleanup`        | Clean up PR comment files                       |
-| `bun run pr:list`                    | List PR comments                                 |
+| Command                                   | Description                       |
+| ----------------------------------------- | --------------------------------- |
+| `bun run pr:comments`                     | Read PR comments                  |
+| `bun run pr:comments:detect`              | Detect unresolved PR comments     |
+| `bun run pr:comments:get`                 | Get PR comments                   |
+| `bun run pr:comments:resolve`             | Resolve PR comments               |
+| `bun run pr:comments:resolve:interactive` | Resolve PR comments interactively |
+| `bun run pr:comments:dismiss`             | Dismiss PR comments               |
+| `bun run pr:comments:cleanup`             | Clean up PR comment files         |
+| `bun run pr:list`                         | List PR comments                  |
 
 ---
 

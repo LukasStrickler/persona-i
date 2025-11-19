@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Brain, Sparkles, Settings } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const tests = [
   {
@@ -20,7 +23,7 @@ const tests = [
     status: "coming-soon" as const,
   },
   {
-    name: "Enneagram",
+    name: "Ennea\u00ADgram",
     description:
       "Uncover your core motivations and understand your personality patterns.",
     icon: Sparkles,
@@ -37,13 +40,23 @@ const tests = [
 ];
 
 export function Hero() {
+  const isMobile = useIsMobile();
+
+  // Helper function to get display name with responsive replacement
+  const getDisplayName = (name: string) => {
+    if (isMobile && name === "Custom Assessments") {
+      return "Custom Questions";
+    }
+    return name;
+  };
+
   return (
     <section className="mx-auto mt-24 max-w-7xl px-4 py-6 sm:py-12 md:mt-12">
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
         {/* Left: Content */}
         <div className="flex flex-col justify-center space-y-6 text-center lg:text-left">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-            Benchmark your personality against leading AI models.
+            Compare your personality with leading AI models.
           </h1>
           <p className="text-muted-foreground mx-auto max-w-2xl text-lg sm:text-xl lg:mx-0">
             Take science-informed tests, visualize your profile, and see which
@@ -89,6 +102,7 @@ export function Hero() {
               const isLive = test.status === "live";
               const isComingSoon = test.status === "coming-soon";
               const isPartner = test.status === "partner";
+              const displayName = getDisplayName(test.name);
 
               return (
                 <div
@@ -100,16 +114,17 @@ export function Hero() {
                       <Icon className="text-primary h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base leading-tight font-semibold">
-                          {test.name}
-                        </h3>
-                        {/* {isPartner && (
-                          <Badge variant="outline" className="shrink-0 text-xs">
-                            Partner
-                          </Badge>
-                        )} */}
-                      </div>
+                      <h3
+                        className="text-base leading-relaxed font-semibold break-words"
+                        style={{ textWrap: "balance" }}
+                      >
+                        {displayName}
+                      </h3>
+                      {/* {isPartner && (
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                          Partner
+                        </Badge>
+                      )} */}
                     </div>
                   </div>
                   <p className="text-muted-foreground text-sm leading-relaxed">
