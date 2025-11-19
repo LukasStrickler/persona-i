@@ -5,7 +5,7 @@ import {
   type PersistStorage,
 } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { enableMapSet } from "immer";
+import { enableMapSet, type WritableDraft } from "immer";
 import {
   getResponseValue,
   type ResponseValueType,
@@ -916,7 +916,7 @@ function createStore(slug: string) {
           },
 
           setUserSessionSelection: (sessionIds) => {
-            set((state) => {
+            set((state: WritableDraft<TestAnalysisState>) => {
               if (sessionIds.length === 0) {
                 // Fallback to latest completed session (smart default)
                 const allUserResponses = Array.from(
@@ -974,7 +974,7 @@ function createStore(slug: string) {
 
           // Invalidation
           invalidateUserSessions: () => {
-            set((state) => {
+            set((state: WritableDraft<TestAnalysisState>) => {
               state.userSessions.clear();
               state.selection.selectedUserSessionIds.clear();
               state.filteredUserResponses = [];
@@ -986,7 +986,7 @@ function createStore(slug: string) {
           },
 
           invalidateAll: () => {
-            set((state) => {
+            set((state: WritableDraft<TestAnalysisState>) => {
               // Clear all questionnaire content
               state.questions.clear();
               // questionsByPosition is now computed on-demand, no need to clear it
