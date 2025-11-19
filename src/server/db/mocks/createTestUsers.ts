@@ -2,8 +2,7 @@ import { dev_db } from "scripts/setup-db";
 import { user, verification } from "../schema";
 import { logger } from "@/lib/logger";
 import * as crypto from "crypto";
-import { hashToken } from "@/lib/token-hash";
-import { generateVerificationToken } from "@/lib/auth";
+import { hashToken, generateVerificationToken } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
 export async function createTestUsers() {

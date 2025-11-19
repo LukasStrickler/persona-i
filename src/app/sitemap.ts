@@ -1,8 +1,12 @@
 import type { MetadataRoute } from "next";
+import { db } from "@/server/db";
+import { questionnaire } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Sitemap for SEO - includes all publicly accessible pages.
  * Excludes: /account, /login, /auth/error (user-specific/auth pages)
+ * Dynamically includes all public questionnaire analysis pages
  */
 
 type SitemapRoute = {
@@ -19,7 +23,7 @@ type SitemapRoute = {
   lastModified?: Date;
 };
 
-const sitemapRoutes: SitemapRoute[] = [
+const staticRoutes: SitemapRoute[] = [
   {
     path: "",
     changeFrequency: "weekly",
@@ -54,24 +58,49 @@ const sitemapRoutes: SitemapRoute[] = [
     path: "/privacy",
     changeFrequency: "yearly",
     priority: 0.3,
-    // Static page - use fixed date or omit lastModified
   },
   {
     path: "/terms",
     changeFrequency: "yearly",
     priority: 0.3,
-    // Static page - use fixed date or omit lastModified
   },
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
     (process.env.NODE_ENV === "development"
       ? "http://localhost:3000"
       : "https://personai.review");
 
-  return sitemapRoutes.map((route) => ({
+  // Get all public questionnaires for analysis pages
+  let publicQuestionnaires: Array<{ slug: string; updatedAt: Date | null }> =
+    [];
+  try {
+    publicQuestionnaires = await db
+      .select({
+        slug: questionnaire.slug,
+        updatedAt: questionnaire.updatedAt,
+      })
+      .from(questionnaire)
+      .where(eq(questionnaire.isPublic, true));
+  } catch (error) {
+    // If DB is not available (e.g., during build), just use static routes
+    console.warn("Failed to fetch questionnaires for sitemap:", error);
+  }
+
+  // Combine static routes with dynamic questionnaire routes
+  const allRoutes: SitemapRoute[] = [
+    ...staticRoutes,
+    ...publicQuestionnaires.map((q) => ({
+      path: `/tests/${q.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+      lastModified: q.updatedAt ?? undefined,
+    })),
+  ];
+
+  return allRoutes.map((route) => ({
     url: `${baseUrl}${route.path}`,
     changeFrequency: route.changeFrequency,
     priority: route.priority,

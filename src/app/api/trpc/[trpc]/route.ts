@@ -1,16 +1,22 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { type NextRequest } from "next/server";
+import { headers } from "next/headers";
 
 import { env } from "@/env";
 import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 
-const handler = (req: NextRequest) =>
-  fetchRequestHandler({
+const handler = async (req: NextRequest) => {
+  // Get headers for BetterAuth session retrieval (used in createContext)
+
+  return fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
     router: appRouter,
-    createContext: () => createTRPCContext({}),
+    createContext: async () => {
+      const h = await headers();
+      return createTRPCContext({ headers: h });
+    },
     onError:
       env.NODE_ENV === "development"
         ? ({ path, error }) => {
@@ -20,5 +26,6 @@ const handler = (req: NextRequest) =>
           }
         : undefined,
   });
+};
 
 export { handler as GET, handler as POST };

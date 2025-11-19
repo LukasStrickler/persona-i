@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { env } from "@/env";
 import { logger } from "@/lib/logger";
-import { contactFormSchema, honeypotFieldName } from "@/lib/contact/schema";
+import { contactFormSchema, honeypotFieldName } from "@/lib/schemas/contact";
 import { ContactFormEmail } from "@/emails/contact-form";
 
 const resend = new Resend(env.RESEND_API_KEY);

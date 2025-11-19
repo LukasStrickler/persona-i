@@ -299,3 +299,159 @@ Cookie: personai_contact_secret=csrf-token
 - In production mode, `CONTACT_EMAIL` must be configured or the endpoint will return a configuration error.
 - Honeypot field is silently accepted (returns success) to avoid revealing its existence to bots.
 - All string fields are automatically trimmed before validation.
+
+## Questionnaire Responses
+
+### Save Responses Batch
+
+Save multiple questionnaire responses in a single transaction. Used during test completion to ensure all responses are saved before marking the session as completed.
+
+**Endpoint**: `POST /api/trpc/questionnaires.saveResponsesBatch` (tRPC)
+
+**Authentication**: Required
+
+**Request Body** (tRPC format):
+
+```json
+{
+  "json": {
+    "sessionId": "session-uuid",
+    "responses": [
+      {
+        "questionId": "question-uuid",
+        "value": "response-value",
+        "selectedOptionId": "option-uuid"
+      }
+    ]
+  }
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "result": {
+    "data": {
+      "success": true,
+      "savedCount": 25,
+      "failed": []
+    }
+  }
+}
+```
+
+**Error Responses**:
+
+- **400 Bad Request** - Invalid input
+
+```json
+{
+  "error": {
+    "message": "Invalid input",
+    "code": "BAD_REQUEST"
+  }
+}
+```
+
+- **401 Unauthorized** - Not authenticated
+
+```json
+{
+  "error": {
+    "message": "UNAUTHORIZED",
+    "code": "UNAUTHORIZED"
+  }
+}
+```
+
+- **403 Forbidden** - Session does not belong to user
+
+```json
+{
+  "error": {
+    "message": "Unauthorized - session does not belong to user",
+    "code": "FORBIDDEN"
+  }
+}
+```
+
+- **400 Bad Request** - Session already completed
+
+```json
+{
+  "error": {
+    "message": "Cannot modify responses for completed session",
+    "code": "BAD_REQUEST"
+  }
+}
+```
+
+**Response Format**:
+
+- **success**: `boolean` - Whether all responses were saved successfully
+- **savedCount**: `number` - Number of responses successfully saved
+- **failed**: `Array<{ questionId: string, error: string }>` - Array of failed responses with error details
+
+**Transaction Behavior**:
+
+- All responses are saved in a single database transaction
+- If any response fails, the entire transaction rolls back
+- Session `updatedAt` is updated once at the end of the transaction
+
+**Question Types Supported**:
+
+- `single_choice`: Requires `value` (string) and `selectedOptionId` (optional)
+- `multi_choice`: Requires `value` (string[]) and `selectedOptionIds` (optional)
+- `scalar`: Requires `value` (number)
+- `boolean`: Requires `value` (boolean)
+- `text`: Requires `value` (string)
+
+**See Also**: [Batch Save Flow Architecture](../architecture/batch-save-flow.md) for detailed implementation and flow documentation.
+
+### Beforeunload Save Endpoint
+
+Dedicated endpoint for beforeunload handler. Accepts simple JSON format compatible with `sendBeacon` API.
+
+**Endpoint**: `POST /api/save-responses-batch`
+
+**Authentication**: Required (via session cookie)
+
+**Request Body**:
+
+```json
+{
+  "sessionId": "session-uuid",
+  "responses": [
+    {
+      "questionId": "question-uuid",
+      "value": "response-value",
+      "selectedOptionId": "option-uuid"
+    }
+  ]
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "success": true
+}
+```
+
+**Error Response** (500 Internal Server Error):
+
+```json
+{
+  "success": false,
+  "error": "Error message"
+}
+```
+
+**Important Notes**:
+
+- This endpoint is designed for use with `navigator.sendBeacon()` during page unload
+- Best-effort only - may not work in all browsers or network conditions
+- Calls tRPC `saveResponsesBatch` internally via server-side caller
+- Primary guarantee remains the synchronous batch save on Complete button click

@@ -1,10 +1,8 @@
-// Example model schema from the Drizzle docs
-// https://orm.drizzle.team/docs/sql-schema-declaration
-
 import { sql } from "drizzle-orm";
 import { index } from "drizzle-orm/sqlite-core";
 import { createTable } from "./_base";
 
+// Example model schema (keeping for backward compatibility)
 export const posts = createTable(
   "post",
   (d) => ({
@@ -21,3 +19,27 @@ export const posts = createTable(
 
 // Re-export auth tables for convenience
 export * from "./_auth";
+
+// Re-export questionnaire schema tables
+export * from "./question_types";
+export * from "./questionnaires";
+export * from "./subjects";
+export * from "./sessions";
+
+// Re-export indexes
+export {
+  assessmentSessionQuestionnaireVersionIdIdx,
+  assessmentSessionStatusIdx,
+  assessmentSessionSubjectProfileIdIdx,
+  assessmentSessionVersionStatusSubjectIdx,
+  assessmentSessionVersionSubjectStatusUserIdx,
+  responseAssessmentSessionIdIdx,
+} from "./sessions";
+export {
+  questionnaireItemQuestionnaireVersionIdIdx,
+  questionnaireVersionQuestionnaireIdIsActiveVersionIdx,
+} from "./questionnaires";
+export {
+  subjectProfileUserIdSubjectTypeIdx,
+  subjectProfileSubjectTypeIdx,
+} from "./subjects";

@@ -51,6 +51,11 @@ yarn-error.log*
 !.cursor/rules/
 !.cursor/commands/
 
+# agent
+!.agent/
+!.agent/rules/
+!.agent/workflows/
+
 # CodeRabbit reviews
 .coderabbit/
 

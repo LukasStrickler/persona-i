@@ -6,12 +6,14 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { type headers } from "next/headers";
 
 import { db } from "@/server/db";
 import { logger } from "@/lib/logger";
+import { auth } from "@/lib/auth";
 
 /**
  * 1. CONTEXT
@@ -21,7 +23,9 @@ import { logger } from "@/lib/logger";
  * These allow you to access things when processing a request, like the database, the session, etc.
  */
 
-type CreateContextOptions = Record<string, never>;
+type CreateContextOptions = {
+  headers?: Awaited<ReturnType<typeof headers>>;
+};
 
 /**
  * This helper generates the "internals" for a tRPC context. If you need to use it, you can export
@@ -33,9 +37,33 @@ type CreateContextOptions = Record<string, never>;
  *
  * @see https://create.t3.gg/en/usage/trpc#-serverapitrpcts
  */
-const createInnerTRPCContext = (_opts: CreateContextOptions) => {
+const createInnerTRPCContext = async (opts: CreateContextOptions) => {
+  // Get session from BetterAuth if headers are provided
+  let session = null;
+  let user = null;
+
+  if (opts.headers) {
+    try {
+      // Convert Next.js headers to a Headers object for BetterAuth
+      const headersObj = new Headers();
+      for (const [key, value] of opts.headers.entries()) {
+        headersObj.set(key, value);
+      }
+
+      session = await auth.api.getSession({
+        headers: headersObj,
+      });
+      user = session?.user ?? null;
+    } catch (error) {
+      // Session fetch failed - user is not authenticated
+      logger.dev("Failed to get session in tRPC context", { error });
+    }
+  }
+
   return {
     db,
+    session,
+    user,
   };
 };
 
@@ -45,8 +73,8 @@ const createInnerTRPCContext = (_opts: CreateContextOptions) => {
  *
  * @see https://trpc.io/docs/context
  */
-export const createTRPCContext = (_opts?: CreateContextOptions) => {
-  return createInnerTRPCContext(_opts ?? {});
+export const createTRPCContext = async (opts?: CreateContextOptions) => {
+  return createInnerTRPCContext(opts ?? {});
 };
 
 /**
@@ -123,3 +151,35 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
+
+/**
+ * Protected (authenticated) procedure
+ *
+ * This middleware ensures that a user is authenticated before allowing access to the procedure.
+ * Throws UNAUTHORIZED error if user is not authenticated.
+ */
+const isAuthenticated = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "You must be logged in to access this resource",
+    });
+  }
+
+  return next({
+    ctx: {
+      // Type-safe context with guaranteed user
+      ...ctx,
+      user: ctx.user,
+    },
+  });
+});
+
+/**
+ * Protected procedure - requires authentication
+ *
+ * Use this for procedures that require a logged-in user.
+ */
+export const protectedProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(isAuthenticated);

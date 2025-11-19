@@ -1,6 +1,6 @@
 "use client";
 
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
@@ -27,7 +27,13 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 1000,
+            // Default to 7 days for non-user-specific data (models, analysis rules, questionnaires)
+            // User-specific queries override this with shorter staleTime (5 minutes)
+            staleTime: 7 * 24 * 60 * 60 * 1000, // 7 days - non-user data rarely changes
+            gcTime: 30 * 24 * 60 * 60 * 1000, // 30 days - keep in cache for a month
+            refetchOnWindowFocus: false, // Don't refetch on tab focus
+            refetchOnReconnect: true, // Refetch on network reconnect
+            retry: 1, // Only retry once on failure (with exponential backoff)
           },
         },
       }),
@@ -50,9 +56,11 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
   );
 
   return (
-    <api.Provider client={trpcClient} queryClient={queryClient}>
-      {props.children}
-    </api.Provider>
+    <QueryClientProvider client={queryClient}>
+      <api.Provider client={trpcClient} queryClient={queryClient}>
+        {props.children}
+      </api.Provider>
+    </QueryClientProvider>
   );
 }
 
