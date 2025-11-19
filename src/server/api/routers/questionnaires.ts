@@ -875,13 +875,10 @@ export const questionnairesRouter = createTRPCRouter({
 
             if (existingResponse) {
               // Update existing response
-              logger.dev(
-                `[BATCH_SAVE] Updating existing response ${i + 1}:`,
-                {
-                  responseId: existingResponse.id,
-                  questionId: responseInput.questionId,
-                },
-              );
+              logger.dev(`[BATCH_SAVE] Updating existing response ${i + 1}:`, {
+                responseId: existingResponse.id,
+                questionId: responseInput.questionId,
+              });
               await tx
                 .update(response)
                 .set(responseData)

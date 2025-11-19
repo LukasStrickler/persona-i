@@ -18,13 +18,10 @@ export function useTestAnalysisMutations(slug: string) {
 
   const completeSession = api.questionnaires.completeSession.useMutation({
     onSuccess: async (data, variables) => {
-      logger.dev(
-        "[STORE_SYNC] Session completion success, fetching session:",
-        {
-          sessionId: variables.sessionId,
-          result: data,
-        },
-      );
+      logger.dev("[STORE_SYNC] Session completion success, fetching session:", {
+        sessionId: variables.sessionId,
+        result: data,
+      });
 
       // Immediately fetch the completed session and add to store
       // This is the ONLY refetch needed - models stay cached

@@ -81,8 +81,8 @@ export function SpringSlider({
   };
 
   const handleDrag = (
-    event: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo,
+    _event: MouseEvent | TouchEvent | PointerEvent,
+    _info: PanInfo,
   ) => {
     if (!trackRef.current) return;
 
@@ -105,8 +105,8 @@ export function SpringSlider({
   };
 
   const handleDragEnd = (
-    event: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo,
+    _event: MouseEvent | TouchEvent | PointerEvent,
+    _info: PanInfo,
   ) => {
     isDragging.current = false;
 

@@ -159,6 +159,7 @@ export async function POST(request: Request) {
     }
 
     // Extract form data (already validated by contactFormSchema)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [honeypotFieldName]: _, hCaptchaToken: __, ...formData } = payload;
 
     // Check if contact email is configured

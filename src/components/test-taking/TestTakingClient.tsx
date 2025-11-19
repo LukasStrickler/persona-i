@@ -212,10 +212,10 @@ export function TestTakingClient({
   const answeredCount = Object.keys(responses).length;
   const overallProgress = (answeredCount / totalQuestions) * 100;
 
-  // Calculate category-specific progress
-  const categoryAnsweredCount = currentCategory.items.filter(
-    (item) => responses[item.question.id] !== undefined,
-  ).length;
+  // Calculate category-specific progress (for future use)
+  // const categoryAnsweredCount = currentCategory.items.filter(
+  //   (item) => responses[item.question.id] !== undefined,
+  // ).length;
 
   // Check if all required questions in current category are answered
   const requiredQuestionsInCategory = currentCategory.items.filter(
