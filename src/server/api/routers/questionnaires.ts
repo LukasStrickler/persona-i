@@ -18,6 +18,53 @@ import {
 } from "@/server/db/schema";
 import { mapResponseValueToData } from "@/server/lib/responses";
 import { logger } from "@/lib/logger";
+import { db } from "@/server/db";
+
+/**
+ * Get or create a subject profile for a user
+ */
+async function getOrCreateSubjectProfile(
+  dbInstance: typeof db,
+  userId: string,
+  userName: string | null,
+  userEmail: string,
+) {
+  let subjectProfileRecord = await dbInstance.query.subjectProfile.findFirst({
+    where: and(
+      eq(subjectProfile.userId, userId),
+      eq(subjectProfile.subjectType, "human"),
+    ),
+  });
+
+  if (!subjectProfileRecord) {
+    // Create new subject profile
+    const subjectProfileId = crypto.randomUUID();
+    const now = new Date();
+
+    await dbInstance.insert(subjectProfile).values({
+      id: subjectProfileId,
+      subjectType: "human",
+      userId,
+      displayName: userName ?? userEmail,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    subjectProfileRecord = {
+      id: subjectProfileId,
+      subjectType: "human",
+      userId,
+      displayName: userName ?? userEmail,
+      preferredLocale: null,
+      metadataJson: null,
+      consentFlagsJson: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  return subjectProfileRecord;
+}
 
 export const questionnairesRouter = createTRPCRouter({
   /**
@@ -328,39 +375,12 @@ export const questionnairesRouter = createTRPCRouter({
       }
 
       // Get or create subject profile for user
-      let subjectProfileRecord = await ctx.db.query.subjectProfile.findFirst({
-        where: and(
-          eq(subjectProfile.userId, ctx.user.id),
-          eq(subjectProfile.subjectType, "human"),
-        ),
-      });
-
-      if (!subjectProfileRecord) {
-        // Create new subject profile
-        const subjectProfileId = crypto.randomUUID();
-        const now = new Date();
-
-        await ctx.db.insert(subjectProfile).values({
-          id: subjectProfileId,
-          subjectType: "human",
-          userId: ctx.user.id,
-          displayName: ctx.user.name ?? ctx.user.email,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        subjectProfileRecord = {
-          id: subjectProfileId,
-          subjectType: "human",
-          userId: ctx.user.id,
-          displayName: ctx.user.name ?? ctx.user.email,
-          preferredLocale: null,
-          metadataJson: null,
-          consentFlagsJson: null,
-          createdAt: now,
-          updatedAt: now,
-        };
-      }
+      const subjectProfileRecord = await getOrCreateSubjectProfile(
+        ctx.db,
+        ctx.user.id,
+        ctx.user.name,
+        ctx.user.email,
+      );
 
       // Check for existing incomplete session
       const existingSession = await ctx.db.query.assessmentSession.findFirst({
@@ -450,39 +470,12 @@ export const questionnairesRouter = createTRPCRouter({
       }
 
       // Get or create subject profile for user
-      let subjectProfileRecord = await ctx.db.query.subjectProfile.findFirst({
-        where: and(
-          eq(subjectProfile.userId, ctx.user.id),
-          eq(subjectProfile.subjectType, "human"),
-        ),
-      });
-
-      if (!subjectProfileRecord) {
-        // Create new subject profile
-        const subjectProfileId = crypto.randomUUID();
-        const now = new Date();
-
-        await ctx.db.insert(subjectProfile).values({
-          id: subjectProfileId,
-          subjectType: "human",
-          userId: ctx.user.id,
-          displayName: ctx.user.name ?? ctx.user.email,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        subjectProfileRecord = {
-          id: subjectProfileId,
-          subjectType: "human",
-          userId: ctx.user.id,
-          displayName: ctx.user.name ?? ctx.user.email,
-          preferredLocale: null,
-          metadataJson: null,
-          consentFlagsJson: null,
-          createdAt: now,
-          updatedAt: now,
-        };
-      }
+      const subjectProfileRecord = await getOrCreateSubjectProfile(
+        ctx.db,
+        ctx.user.id,
+        ctx.user.name,
+        ctx.user.email,
+      );
 
       // Check for existing incomplete session
       const existingSession = await ctx.db.query.assessmentSession.findFirst({
@@ -994,16 +987,7 @@ export const questionnairesRouter = createTRPCRouter({
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
-        return {
-          success: false,
-          savedCount: 0,
-          failed: [
-            {
-              questionId: "unknown",
-              error: error instanceof Error ? error.message : String(error),
-            },
-          ],
-        };
+        throw error;
       }
     }),
 

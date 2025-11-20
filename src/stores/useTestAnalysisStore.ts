@@ -289,20 +289,6 @@ function createCustomStorage(
           selectedUserSessionIds: new Set(),
         };
 
-        // Rehydrate _computedCache (ephemeral, but rehydrate if present)
-        if (state._computedCache && Array.isArray(state._computedCache)) {
-          state._computedCache = new Map(
-            state._computedCache as Array<[string, unknown]>,
-          );
-        }
-
-        // Rehydrate _syncErrors (ephemeral, but rehydrate if present)
-        if (state._syncErrors && Array.isArray(state._syncErrors)) {
-          state._syncErrors = new Map(
-            state._syncErrors as Array<[string, SyncError]>,
-          );
-        }
-
         // Return as StorageValue - Zustand will handle partial state during migration
         return { ...parsed, state: state as TestAnalysisState } as {
           state: TestAnalysisState;
@@ -788,7 +774,7 @@ function createStore(slug: string) {
                   sessionId: sessionData.session.id,
                   subjectId: sessionData.session.userId ?? null,
                   subjectType: "user",
-                  displayName: `Session ${sessionData.session.id.slice(0, 8) ?? "unknown"}`,
+                  displayName: `Session ${sessionData.session.id?.slice(0, 8) ?? "unknown"}`,
                   responses: processedResponses,
                   completedAt: sessionData.session.completedAt
                     ? new Date(sessionData.session.completedAt)

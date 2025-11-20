@@ -275,34 +275,6 @@ export function TestTakingClient({
     return () => window.removeEventListener("beforeunload", handler);
   }, []); // Empty deps - handler uses refs
 
-  // Check for valid category after all hooks are called (Rules of Hooks)
-  const currentCategory = sections[currentCategoryIndex];
-  if (!currentCategory) {
-    return <div>No categories found</div>;
-  }
-
-  // Calculate progress
-  const totalQuestions = sessionData.items.length;
-  const answeredCount = Object.keys(responses).length;
-  const overallProgress =
-    totalQuestions === 0 ? 0 : (answeredCount / totalQuestions) * 100;
-
-  // Check if all required questions in current category are answered
-  const requiredQuestionsInCategory = currentCategory.items.filter(
-    (item) => item.isRequired !== false,
-  );
-  const requiredAnsweredCount = requiredQuestionsInCategory.filter(
-    (item) => responses[item.question.id] !== undefined,
-  ).length;
-  const canProceedToNext =
-    requiredAnsweredCount === requiredQuestionsInCategory.length;
-
-  const handleNextCategory = () => {
-    if (currentCategoryIndex < sections.length - 1) {
-      setCurrentCategoryIndex((prev) => prev + 1);
-    }
-  };
-
   const findQuestionCardElement = React.useCallback(
     (cardContentEl: HTMLElement) => {
       const questionCard =
@@ -384,6 +356,34 @@ export function TestTakingClient({
     [findQuestionCardElement],
   );
 
+  // Check for valid category after all hooks are called (Rules of Hooks)
+  const currentCategory = sections[currentCategoryIndex];
+  if (!currentCategory) {
+    return <div>No categories found</div>;
+  }
+
+  // Calculate progress
+  const totalQuestions = sessionData.items.length;
+  const answeredCount = Object.keys(responses).length;
+  const overallProgress =
+    totalQuestions === 0 ? 0 : (answeredCount / totalQuestions) * 100;
+
+  // Check if all required questions in current category are answered
+  const requiredQuestionsInCategory = currentCategory.items.filter(
+    (item) => item.isRequired !== false,
+  );
+  const requiredAnsweredCount = requiredQuestionsInCategory.filter(
+    (item) => responses[item.question.id] !== undefined,
+  ).length;
+  const canProceedToNext =
+    requiredAnsweredCount === requiredQuestionsInCategory.length;
+
+  const handleNextCategory = () => {
+    if (currentCategoryIndex < sections.length - 1) {
+      setCurrentCategoryIndex((prev) => prev + 1);
+    }
+  };
+
   const handlePreviousCategory = () => {
     if (currentCategoryIndex > 0) {
       setCurrentCategoryIndex((prev) => prev - 1);
@@ -391,7 +391,17 @@ export function TestTakingClient({
   };
 
   const isLastCategory = currentCategoryIndex === sections.length - 1;
-  const allQuestionsAnswered = answeredCount === totalQuestions;
+
+  // Check if all required questions across all categories are answered
+  const requiredQuestions = sessionData.items.filter(
+    (item) => item.isRequired !== false,
+  );
+  const answeredRequiredCount = requiredQuestions.filter(
+    (item) => responses[item.question.id] !== undefined,
+  ).length;
+  const allRequiredQuestionsAnswered =
+    requiredQuestions.length === 0 ||
+    answeredRequiredCount === requiredQuestions.length;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -548,7 +558,7 @@ export function TestTakingClient({
           ) : (
             <Button
               onClick={handleComplete}
-              disabled={isCompleting || !allQuestionsAnswered}
+              disabled={isCompleting || !allRequiredQuestionsAnswered}
               size="lg"
               className="min-w-[140px] gap-2"
             >
