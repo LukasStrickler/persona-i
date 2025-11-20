@@ -1,12 +1,15 @@
+// For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from "eslint-plugin-storybook";
+
 import tseslint from "typescript-eslint";
 // @ts-ignore -- no types for this plugin
 import drizzle from "eslint-plugin-drizzle";
 
 export default tseslint.config(
+  // Note: Next.js ESLint config (next/core-web-vitals) has a circular structure issue
   {
     ignores: [".next", "node_modules", "out", "build", "dist", ".OLD_CODE"],
   },
-  // Note: Next.js ESLint config (next/core-web-vitals) has a circular structure issue
   // with FlatCompat in Next.js 16. Using TypeScript ESLint configs only for now.
   // This doesn't affect functionality - build and runtime work correctly.
   {
@@ -68,4 +71,6 @@ export default tseslint.config(
       },
     },
   },
+  storybook.configs["flat/recommended"],
+  storybook.configs["flat/recommended"],
 );
