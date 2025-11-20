@@ -289,6 +289,44 @@ function createCustomStorage(
           selectedUserSessionIds: new Set(),
         };
 
+        // CRITICAL: Rehydrate _computedCache and _syncErrors even though they're not persisted
+        //
+        // WHAT CAUSED THE ISSUE:
+        // - These fields were removed as "dead code" because they're never persisted (see setItem)
+        // - However, removing them caused "The result of getSnapshot should be cached" errors
+        // - This led to infinite loops because Zustand's state structure became inconsistent
+        //
+        // WHY THIS CODE IS NEEDED:
+        // 1. Handles old persisted state: Old localStorage data might have these fields as arrays
+        //    - If we don't rehydrate them, they remain as arrays instead of Maps
+        //    - This causes type mismatches and inconsistent state structure
+        // 2. Maintains state structure: Zustand merges persisted state with initial state
+        //    - If these fields are missing or wrong type, Zustand can't properly merge
+        //    - This causes getSnapshot to return new objects on every read = infinite loops
+        // 3. Zustand's merge behavior: When merging, Zustand expects consistent types
+        //    - Missing fields or type mismatches cause state to be recreated on every read
+        //    - This triggers "getSnapshot should be cached" warnings and infinite re-renders
+        //
+        // WHAT MUST BE KEPT:
+        // - MUST rehydrate these fields if they exist in persisted state (as arrays)
+        // - MUST convert them to Maps to match the expected state structure
+        // - MUST NOT remove this code even though these fields aren't persisted
+        // - MUST NOT always initialize them (let Zustand merge handle defaults from initial state)
+        //
+        // Rehydrate _computedCache (ephemeral, but rehydrate if present)
+        if (state._computedCache && Array.isArray(state._computedCache)) {
+          state._computedCache = new Map(
+            state._computedCache as Array<[string, unknown]>,
+          );
+        }
+
+        // Rehydrate _syncErrors (ephemeral, but rehydrate if present)
+        if (state._syncErrors && Array.isArray(state._syncErrors)) {
+          state._syncErrors = new Map(
+            state._syncErrors as Array<[string, SyncError]>,
+          );
+        }
+
         // Return as StorageValue - Zustand will handle partial state during migration
         return { ...parsed, state: state as TestAnalysisState } as {
           state: TestAnalysisState;

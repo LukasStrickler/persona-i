@@ -81,27 +81,117 @@ export const useHumanResponses = () => {
 /**
  * Get selected model IDs (memoized to prevent infinite loops)
  * Subscribes to the actual IDs array (sorted for stability) to detect changes even when size stays the same
+ *
+ * CRITICAL: This implementation prevents infinite loops caused by creating new array references on every render.
+ *
+ * WHAT CAUSED THE ISSUE:
+ * - Original implementation used `useStoreShallow` with `Array.from(...).sort()` directly
+ * - This created a NEW array on every selector evaluation, even when IDs didn't change
+ * - Zustand's `shallow` comparison couldn't help because the array reference was always new
+ * - This triggered "The result of getSnapshot should be cached" errors and infinite re-renders
+ *
+ * WHY THIS FIX WORKS:
+ * 1. Subscribe to keys string (primitive): We subscribe to the sorted, joined string of IDs
+ *    - Strings are compared by VALUE in Zustand (using Object.is), not by reference
+ *    - Same string value = no re-render, even if it's a new string instance
+ * 2. Memoize array creation: useMemo only creates a new array when keysString actually changes
+ *    - This ensures stable array reference when IDs haven't changed
+ *    - Prevents infinite loops while still detecting all changes (including when size stays same)
+ *
+ * WHAT MUST BE KEPT:
+ * - MUST subscribe to keys string (not just size) to detect ID changes when size stays same
+ * - MUST use useMemo to cache array creation based on keysString dependency
+ * - MUST use ref to store cached array to maintain stable reference across renders
+ * - MUST NOT use useStoreShallow with array creation directly (creates new array every time)
+ * - MUST NOT subscribe to size only (misses changes when size stays same but IDs change)
  */
 export const useSelectedModels = () => {
   const store = useStore();
-  // Subscribe to sorted array of IDs with shallow comparison to detect ID changes even when size is unchanged
-  const selectedIds = useStoreShallow(store, (state) =>
-    Array.from(state.selection.selectedModelIds).sort(),
+  // Subscribe to the sorted keys string to detect any changes (including when size stays same)
+  // Using regular store() since strings are primitives and compared by value
+  // CRITICAL: This string subscription is what prevents infinite loops - same string value = no re-render
+  const keysString = store((state) =>
+    Array.from(state.selection.selectedModelIds).sort().join(","),
   );
-  return selectedIds;
+  // CRITICAL: Use ref to maintain stable array reference across renders
+  // This prevents creating new arrays when keys haven't actually changed
+  const cachedArrayRef = useRef<{ keys: string; array: string[] }>({
+    keys: "",
+    array: [],
+  });
+
+  // CRITICAL: useMemo ensures we only create new array when keysString actually changes
+  // This provides stable array reference when IDs haven't changed, preventing infinite loops
+  return useMemo(() => {
+    // Only create new array if keys actually changed
+    if (keysString !== cachedArrayRef.current.keys) {
+      const state = store.getState();
+      cachedArrayRef.current = {
+        keys: keysString,
+        array: Array.from(state.selection.selectedModelIds).sort(),
+      };
+    }
+    // Return stable array reference - same reference when keys haven't changed
+    return cachedArrayRef.current.array;
+  }, [keysString, store]);
 };
 
 /**
  * Get selected user session IDs (memoized to prevent infinite loops)
  * Subscribes to the actual IDs array (sorted for stability) to detect changes even when size stays the same
+ *
+ * CRITICAL: This implementation prevents infinite loops caused by creating new array references on every render.
+ *
+ * WHAT CAUSED THE ISSUE:
+ * - Original implementation used `useStoreShallow` with `Array.from(...).sort()` directly
+ * - This created a NEW array on every selector evaluation, even when IDs didn't change
+ * - Zustand's `shallow` comparison couldn't help because the array reference was always new
+ * - This triggered "The result of getSnapshot should be cached" errors and infinite re-renders
+ *
+ * WHY THIS FIX WORKS:
+ * 1. Subscribe to keys string (primitive): We subscribe to the sorted, joined string of IDs
+ *    - Strings are compared by VALUE in Zustand (using Object.is), not by reference
+ *    - Same string value = no re-render, even if it's a new string instance
+ * 2. Memoize array creation: useMemo only creates a new array when keysString actually changes
+ *    - This ensures stable array reference when IDs haven't changed
+ *    - Prevents infinite loops while still detecting all changes (including when size stays same)
+ *
+ * WHAT MUST BE KEPT:
+ * - MUST subscribe to keys string (not just size) to detect ID changes when size stays same
+ * - MUST use useMemo to cache array creation based on keysString dependency
+ * - MUST use ref to store cached array to maintain stable reference across renders
+ * - MUST NOT use useStoreShallow with array creation directly (creates new array every time)
+ * - MUST NOT subscribe to size only (misses changes when size stays same but IDs change)
  */
 export const useSelectedUserSessions = () => {
   const store = useStore();
-  // Subscribe to sorted array of IDs with shallow comparison to detect ID changes even when size is unchanged
-  const selectedIds = useStoreShallow(store, (state) =>
-    Array.from(state.selection.selectedUserSessionIds).sort(),
+  // Subscribe to the sorted keys string to detect any changes (including when size stays same)
+  // Using regular store() since strings are primitives and compared by value
+  // CRITICAL: This string subscription is what prevents infinite loops - same string value = no re-render
+  const keysString = store((state) =>
+    Array.from(state.selection.selectedUserSessionIds).sort().join(","),
   );
-  return selectedIds;
+  // CRITICAL: Use ref to maintain stable array reference across renders
+  // This prevents creating new arrays when keys haven't actually changed
+  const cachedArrayRef = useRef<{ keys: string; array: string[] }>({
+    keys: "",
+    array: [],
+  });
+
+  // CRITICAL: useMemo ensures we only create new array when keysString actually changes
+  // This provides stable array reference when IDs haven't changed, preventing infinite loops
+  return useMemo(() => {
+    // Only create new array if keys actually changed
+    if (keysString !== cachedArrayRef.current.keys) {
+      const state = store.getState();
+      cachedArrayRef.current = {
+        keys: keysString,
+        array: Array.from(state.selection.selectedUserSessionIds).sort(),
+      };
+    }
+    // Return stable array reference - same reference when keys haven't changed
+    return cachedArrayRef.current.array;
+  }, [keysString, store]);
 };
 
 /**
