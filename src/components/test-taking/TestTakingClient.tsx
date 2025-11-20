@@ -13,6 +13,17 @@ import type { QuestionnaireItem } from "@/lib/types/questionnaire-responses";
 import { useTestCompletion } from "@/hooks/useTestCompletion";
 import { buildResponsesPayload } from "@/lib/utils/questionnaire-responses";
 
+const SLIDER_CONTROL_KEYS = new Set([
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+]);
+
 interface TestTakingClientProps {
   sessionData: {
     session: {
@@ -100,7 +111,10 @@ export function TestTakingClient({
             }
             break;
           case "text":
-            if (item.response.valueText) {
+            if (
+              item.response.valueText !== null &&
+              item.response.valueText !== undefined
+            ) {
               initial[item.question.id] = item.response.valueText;
             }
             break;
@@ -270,7 +284,8 @@ export function TestTakingClient({
   // Calculate progress
   const totalQuestions = sessionData.items.length;
   const answeredCount = Object.keys(responses).length;
-  const overallProgress = (answeredCount / totalQuestions) * 100;
+  const overallProgress =
+    totalQuestions === 0 ? 0 : (answeredCount / totalQuestions) * 100;
 
   // Check if all required questions in current category are answered
   const requiredQuestionsInCategory = currentCategory.items.filter(
@@ -287,6 +302,91 @@ export function TestTakingClient({
       setCurrentCategoryIndex((prev) => prev + 1);
     }
   };
+
+  const findQuestionCardElement = React.useCallback(
+    (cardContentEl: HTMLElement) => {
+      const questionCard =
+        (cardContentEl.querySelector(
+          "[data-question-card-root]",
+        ) as HTMLElement | null) ??
+        (cardContentEl.querySelector(":scope > div") as HTMLElement | null) ??
+        (cardContentEl.firstElementChild as HTMLElement | null);
+
+      if (questionCard) {
+        if (!questionCard.dataset.questionCardRoot) {
+          questionCard.dataset.questionCardRoot = "true";
+        }
+        if (questionCard.tabIndex < 0) {
+          questionCard.tabIndex = 0;
+        }
+      }
+
+      return questionCard;
+    },
+    [],
+  );
+
+  const handleCardContentClick = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const cardContentEl = event.currentTarget;
+      const sliderThumb = cardContentEl.querySelector(
+        '[role="slider"]',
+      ) as HTMLElement | null;
+
+      if (!sliderThumb) {
+        return; // Only apply to scalar questions
+      }
+
+      if (sliderThumb.contains(event.target as Node)) {
+        return; // Let the thumb handle its own focus
+      }
+
+      const questionCard = findQuestionCardElement(cardContentEl);
+      if (!questionCard) return;
+
+      if (document.activeElement !== questionCard) {
+        questionCard.focus({ preventScroll: true });
+      }
+    },
+    [findQuestionCardElement],
+  );
+
+  const handleCardContentKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!SLIDER_CONTROL_KEYS.has(event.key)) return;
+
+      const cardContentEl = event.currentTarget;
+      const sliderThumb = cardContentEl.querySelector(
+        '[role="slider"]',
+      ) as HTMLElement | null;
+
+      if (!sliderThumb) {
+        return;
+      }
+
+      const questionCard = findQuestionCardElement(cardContentEl);
+      if (!questionCard || document.activeElement !== questionCard) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const forwardedEvent = new KeyboardEvent("keydown", {
+        key: event.key,
+        code: event.code,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+        bubbles: true,
+        cancelable: true,
+      });
+
+      sliderThumb.dispatchEvent(forwardedEvent);
+    },
+    [findQuestionCardElement],
+  );
 
   const handlePreviousCategory = () => {
     if (currentCategoryIndex > 0) {
@@ -358,7 +458,7 @@ export function TestTakingClient({
         </div>
 
         {/* Gradient Mask for Soft Edge Scrolling - Attached to header bottom */}
-        <div className="from-background pointer-events-none absolute top-[calc(full)] right-0 left-0 h-18 bg-gradient-to-b to-transparent" />
+        <div className="from-background pointer-events-none absolute top-full right-0 left-0 h-18 bg-gradient-to-b to-transparent" />
       </div>
 
       {/* Main Content Area */}
@@ -391,7 +491,11 @@ export function TestTakingClient({
                     "py-0",
                   )}
                 >
-                  <CardContent className="p-4 sm:p-5">
+                  <CardContent
+                    className="p-4 sm:p-5"
+                    onClick={handleCardContentClick}
+                    onKeyDown={handleCardContentKeyDown}
+                  >
                     <QuestionRenderer
                       question={{
                         id: item.question.id,

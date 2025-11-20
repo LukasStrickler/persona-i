@@ -20,6 +20,7 @@ interface SpringSliderProps {
   disabled?: boolean;
   className?: string;
   onPointerDown?: () => void;
+  "aria-label"?: string;
 }
 
 export function SpringSlider({
@@ -32,6 +33,7 @@ export function SpringSlider({
   disabled = false,
   className,
   onPointerDown,
+  "aria-label": ariaLabel,
 }: SpringSliderProps) {
   const trackRef = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState(0);
@@ -164,6 +166,47 @@ export function SpringSlider({
     // Animation will be handled by the useEffect since we updated the value via parent
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+
+    let newValue = value;
+    const range = max - min;
+    const pageStep = Math.max(step, range / 10);
+
+    switch (e.key) {
+      case "ArrowRight":
+      case "ArrowUp":
+        newValue = Math.min(value + step, max);
+        break;
+      case "ArrowLeft":
+      case "ArrowDown":
+        newValue = Math.max(value - step, min);
+        break;
+      case "Home":
+        newValue = min;
+        break;
+      case "End":
+        newValue = max;
+        break;
+      case "PageUp":
+        newValue = Math.min(value + pageStep, max);
+        break;
+      case "PageDown":
+        newValue = Math.max(value - pageStep, min);
+        break;
+      default:
+        return;
+    }
+
+    // Snap to step
+    const snappedValue = Math.round((newValue - min) / step) * step + min;
+    const clampedValue = Math.min(Math.max(snappedValue, min), max);
+
+    e.preventDefault();
+    onValueChange(clampedValue);
+    onValueCommit(clampedValue);
+  };
+
   return (
     <div
       className={cn(
@@ -200,7 +243,17 @@ export function SpringSlider({
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 1.2 }}
       >
-        <div className="border-primary bg-background ring-offset-background focus-visible:ring-ring h-5 w-5 rounded-full border-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50" />
+        <div
+          role="slider"
+          tabIndex={disabled ? -1 : 0}
+          aria-valuemin={min}
+          aria-valuemax={max}
+          aria-valuenow={value}
+          aria-label={ariaLabel}
+          aria-disabled={disabled}
+          onKeyDown={handleKeyDown}
+          className="border-primary bg-background ring-offset-background focus-visible:ring-ring h-5 w-5 rounded-full border-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+        />
       </motion.div>
     </div>
   );

@@ -852,7 +852,10 @@ function createStore(slug: string) {
               set((s) => {
                 s._syncErrors.delete(questionnaireId);
               });
-            } catch {
+            } catch (error) {
+              const err =
+                error instanceof Error ? error : new Error(String(error));
+              console.error("syncUserSessions failed:", err);
               const errorInfo = get()._syncErrors.get(questionnaireId) ?? {
                 count: 0,
                 lastError: new Date(),
