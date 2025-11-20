@@ -484,12 +484,12 @@ export function TestTakingClient({
                     "group border-border/40 bg-card/40 backdrop-blur-sm transition-all duration-300",
                     "hover:border-border/80 hover:bg-card/60 hover:shadow-sm",
                     "focus-within:border-primary/50 focus-within:ring-primary/20 focus-within:ring-1",
-                    "outline-none focus:outline-none focus-within:outline-none",
+                    "outline-none focus-within:outline-none focus:outline-none",
                     "py-0",
                   )}
                 >
                   <CardContent
-                    className="p-4 sm:p-5 outline-none focus:outline-none"
+                    className="p-4 outline-none focus:outline-none sm:p-5"
                     onClick={handleCardContentClick}
                     onKeyDown={handleCardContentKeyDown}
                   >
