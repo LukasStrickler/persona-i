@@ -680,16 +680,13 @@ export const questionnairesRouter = createTRPCRouter({
 
       // Validate that questionId belongs to this session's questionnaire version
       // questionnaireVersionId is not null in schema, but TypeScript needs help with type inference
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const questionnaireVersionId = session.questionnaireVersionId;
       if (!questionnaireVersionId) {
         throw new Error("Session missing questionnaire version");
       }
       const item = await ctx.db.query.questionnaireItem.findFirst({
         where: and(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           eq(questionnaireItem.questionnaireVersionId, questionnaireVersionId),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           eq(questionnaireItem.questionId, input.questionId),
         ),
       });
@@ -826,7 +823,6 @@ export const questionnairesRouter = createTRPCRouter({
 
       // Validate all questionIds belong to this session's questionnaire version
       // questionnaireVersionId is not null in schema, but TypeScript needs help with type inference
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const questionnaireVersionId = session.questionnaireVersionId;
       if (!questionnaireVersionId) {
         throw new Error("Session missing questionnaire version");
@@ -841,7 +837,6 @@ export const questionnairesRouter = createTRPCRouter({
               questionnaireItem.questionnaireVersionId,
               questionnaireVersionId,
             ),
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             inArray(questionnaireItem.questionId, questionIds),
           ),
         );

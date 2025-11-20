@@ -306,22 +306,22 @@ export function TestTakingClient({
   const findQuestionCardElement = React.useCallback(
     (cardContentEl: HTMLElement) => {
       const questionCard =
-        (cardContentEl.querySelector(
-          "[data-question-card-root]",
-        ) as HTMLElement | null) ??
-        (cardContentEl.querySelector(":scope > div") as HTMLElement | null) ??
-        (cardContentEl.firstElementChild as HTMLElement | null);
+        cardContentEl.querySelector("[data-question-card-root]") ??
+        cardContentEl.querySelector(":scope > div") ??
+        cardContentEl.firstElementChild;
 
       if (questionCard) {
-        if (!questionCard.dataset.questionCardRoot) {
-          questionCard.dataset.questionCardRoot = "true";
+        const htmlElement = questionCard as HTMLElement;
+        htmlElement.dataset.questionCardRoot ??= "true";
+        if (htmlElement.tabIndex < 0) {
+          htmlElement.tabIndex = 0;
         }
-        if (questionCard.tabIndex < 0) {
-          questionCard.tabIndex = 0;
-        }
+        // Remove focus outline
+        htmlElement.classList.add("outline-none", "focus:outline-none");
+        return htmlElement;
       }
 
-      return questionCard;
+      return null;
     },
     [],
   );
@@ -329,9 +329,7 @@ export function TestTakingClient({
   const handleCardContentClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       const cardContentEl = event.currentTarget;
-      const sliderThumb = cardContentEl.querySelector(
-        '[role="slider"]',
-      ) as HTMLElement | null;
+      const sliderThumb = cardContentEl.querySelector('[role="slider"]');
 
       if (!sliderThumb) {
         return; // Only apply to scalar questions
@@ -356,9 +354,7 @@ export function TestTakingClient({
       if (!SLIDER_CONTROL_KEYS.has(event.key)) return;
 
       const cardContentEl = event.currentTarget;
-      const sliderThumb = cardContentEl.querySelector(
-        '[role="slider"]',
-      ) as HTMLElement | null;
+      const sliderThumb = cardContentEl.querySelector('[role="slider"]');
 
       if (!sliderThumb) {
         return;
@@ -488,11 +484,12 @@ export function TestTakingClient({
                     "group border-border/40 bg-card/40 backdrop-blur-sm transition-all duration-300",
                     "hover:border-border/80 hover:bg-card/60 hover:shadow-sm",
                     "focus-within:border-primary/50 focus-within:ring-primary/20 focus-within:ring-1",
+                    "outline-none focus:outline-none focus-within:outline-none",
                     "py-0",
                   )}
                 >
                   <CardContent
-                    className="p-4 sm:p-5"
+                    className="p-4 sm:p-5 outline-none focus:outline-none"
                     onClick={handleCardContentClick}
                     onKeyDown={handleCardContentKeyDown}
                   >
