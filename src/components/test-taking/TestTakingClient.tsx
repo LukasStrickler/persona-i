@@ -136,7 +136,10 @@ export function TestTakingClient({
   React.useEffect(() => {
     resetFocus();
     const nextItems = sections[currentCategoryIndex]?.items ?? [];
-    cardContentRefs.current = Array.from({ length: nextItems.length }, () => null);
+    cardContentRefs.current = Array.from(
+      { length: nextItems.length },
+      () => null,
+    );
     questionCardRefs.current = Array.from(
       { length: nextItems.length },
       () => null,
@@ -260,8 +263,7 @@ export function TestTakingClient({
     const firstUnansweredIndex = nextItems.findIndex(
       (item) => responsesRef.current[item.question.id] === undefined,
     );
-    const targetIndex =
-      firstUnansweredIndex >= 0 ? firstUnansweredIndex : 0;
+    const targetIndex = firstUnansweredIndex >= 0 ? firstUnansweredIndex : 0;
     const focusFirst = () => {
       // Check if the first card ref exists
       if (cardContentRefs.current[targetIndex]) {
