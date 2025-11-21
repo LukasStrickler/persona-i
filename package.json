@@ -23,6 +23,7 @@
     "typecheck": "tsc --noEmit",
     "agent:finalize": "bash scripts/finalize.sh agent",
     "ci:finalize": "bash scripts/finalize.sh ci",
+    "ci:setup": "bash scripts/ci-setup.sh",
     "docs:check": "bash scripts/check-docs.sh",
     "review:task": "bash scripts/review-run.sh task",
     "review:pr": "bash scripts/review-run.sh pr",
