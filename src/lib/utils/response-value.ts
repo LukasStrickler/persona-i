@@ -60,8 +60,19 @@ export function getResponseValue(
         ? (response.rawPayloadJson as string[])
         : null;
     case "option":
+      // Try selectedOptionId first (when options have IDs)
       if (response.selectedOptionId && optionValueMap) {
-        return optionValueMap.get(response.selectedOptionId) ?? null;
+        const value = optionValueMap.get(response.selectedOptionId);
+        if (value !== undefined) return value;
+      }
+      // Fallback to valueText (when options are in configJson without IDs)
+      // Check for both null/undefined and empty string (empty string is invalid)
+      if (
+        response.valueText !== null &&
+        response.valueText !== undefined &&
+        response.valueText !== ""
+      ) {
+        return response.valueText;
       }
       return null;
     default:

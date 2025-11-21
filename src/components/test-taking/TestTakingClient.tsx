@@ -1,17 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { api } from "@/components/providers/TRPCProvider";
 import { QuestionRenderer } from "./questions/QuestionRenderer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useDebounceCallback } from "@/hooks/use-debounce-callback";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { QuestionnaireItem } from "@/lib/types/questionnaire-responses";
 import { useTestCompletion } from "@/hooks/useTestCompletion";
 import { buildResponsesPayload } from "@/lib/utils/questionnaire-responses";
+import {
+  processSections,
+  initializeResponsesFromSessionData,
+  resolveQuestionOptions,
+} from "@/lib/utils/questionnaire-responses";
+import { useSaveResponse } from "@/hooks/useSaveResponse";
+import { useScrollCardIntoView } from "@/hooks/useScrollCardIntoView";
+import { useQuestionFocus } from "@/hooks/useQuestionFocus";
 import { handleScalarKeyboardNavigation } from "./questions/ScalarQuestion";
 import { handleBooleanKeyboardNavigation } from "./questions/BooleanQuestion";
 import { handleSingleChoiceKeyboardNavigation } from "./questions/SingleChoiceQuestion";
@@ -43,275 +49,48 @@ export function TestTakingClient({
   sessionId,
   slug,
 }: TestTakingClientProps & { slug: string }) {
-  // Use sections if available, otherwise fall back to items grouped by section
-  const sections = React.useMemo(() => {
-    if (sessionData.sections && sessionData.sections.length > 0) {
-      return sessionData.sections;
-    }
-    // Fallback: group items by section
-    const itemsBySection = new Map<string, QuestionnaireItem[]>();
-    for (const item of sessionData.items) {
-      const sectionName = item.section ?? "Uncategorized";
-      if (!itemsBySection.has(sectionName)) {
-        itemsBySection.set(sectionName, []);
-      }
-      itemsBySection.get(sectionName)?.push(item);
-    }
-    return Array.from(itemsBySection.entries())
-      .map(([name, items]) => ({
-        name,
-        items: items.sort((a, b) => a.position - b.position),
-      }))
-      .sort((a, b) => {
-        const minA = Math.min(...a.items.map((item) => item.position));
-        const minB = Math.min(...b.items.map((item) => item.position));
-        return minA - minB;
-      });
-  }, [sessionData.sections, sessionData.items]);
+  // Process sections from session data
+  const sections = React.useMemo(
+    () => processSections(sessionData),
+    [sessionData],
+  );
 
   const [currentCategoryIndex, setCurrentCategoryIndex] = React.useState(0);
   const [responses, setResponses] = React.useState<
     Record<string, string | number | boolean | string[]>
-  >(() => {
-    // Initialize from existing responses
-    const initial: Record<string, string | number | boolean | string[]> = {};
-    for (const item of sessionData.items) {
-      if (item.response?.valueType) {
-        // Use valueType to directly access the correct field
-        switch (item.response.valueType) {
-          case "multi_choice":
-            if (
-              item.response.rawPayloadJson &&
-              Array.isArray(item.response.rawPayloadJson)
-            ) {
-              initial[item.question.id] = item.response
-                .rawPayloadJson as string[];
-            }
-            break;
-          case "numeric":
-            if (
-              item.response.valueNumeric !== null &&
-              item.response.valueNumeric !== undefined
-            ) {
-              initial[item.question.id] = item.response.valueNumeric;
-            }
-            break;
-          case "boolean":
-            if (
-              item.response.valueBoolean !== null &&
-              item.response.valueBoolean !== undefined
-            ) {
-              initial[item.question.id] = item.response.valueBoolean;
-            }
-            break;
-          case "text":
-            if (
-              item.response.valueText !== null &&
-              item.response.valueText !== undefined
-            ) {
-              initial[item.question.id] = item.response.valueText;
-            }
-            break;
-          case "option":
-            // Find option value from selectedOptionId
-            if (item.response.selectedOptionId) {
-              const option = item.question.options?.find(
-                (o) => o.id === item.response?.selectedOptionId,
-              );
-              if (option) {
-                initial[item.question.id] = option.value;
-              }
-            }
-            break;
-        }
-      }
-    }
-    return initial;
-  });
+  >(() => initializeResponsesFromSessionData(sessionData.items));
   const [activeCardIndex, setActiveCardIndex] = React.useState(0);
-  const [multiFocusIndex, setMultiFocusIndex] = React.useState<
-    Record<string, number>
-  >({});
-  const [singleFocusIndex, setSingleFocusIndex] = React.useState<
-    Record<string, number>
-  >({});
   const cardContentRefs = React.useRef<Array<HTMLDivElement | null>>([]);
   const questionCardRefs = React.useRef<Array<HTMLElement | null>>([]);
   const contentBoundsRef = React.useRef<HTMLDivElement | null>(null);
   const footerRef = React.useRef<HTMLDivElement | null>(null);
 
-  const saveResponse = api.questionnaires.saveResponse.useMutation();
+  const currentCategory = sections[currentCategoryIndex];
 
-  // Scroll a card into view with a predictable center alignment, clamped so we never overshoot past the footer.
-  const scrollCardIntoView = React.useCallback(
-    (
-      el: HTMLElement,
-      {
-        behavior = "smooth",
-        force = false,
-      }: { behavior?: ScrollBehavior; force?: boolean } = {},
-    ) => {
-      const container = document.getElementById("main-scroll-container");
-      const topOffset = 175; // keep content below header + fade
-      const bottomOffset = (footerRef.current?.offsetHeight ?? 0) + 24; // keep content above sticky footer
+  // Use extracted hooks
+  const { scrollCardIntoView } = useScrollCardIntoView({
+    contentBoundsRef,
+    footerRef,
+  });
 
-      const currentScroll = container?.scrollTop ?? window.scrollY;
-      const clientHeight = container?.clientHeight ?? window.innerHeight;
-      const scrollHeight =
-        container?.scrollHeight ?? document.documentElement.scrollHeight;
-      const scrollNode = container ?? document.documentElement;
-      const isWindowFallback = !container;
+  const {
+    singleFocusIndex,
+    multiFocusIndex,
+    setSingleFocusIndex,
+    setMultiFocusIndex,
+    updateSingleFocus,
+    updateMultiFocus,
+    resetFocus,
+  } = useQuestionFocus({
+    currentCategory,
+    responses,
+  });
 
-      const containerRect = container
-        ? container.getBoundingClientRect()
-        : {
-            top: 0,
-            left: 0,
-            height: window.innerHeight,
-            width: window.innerWidth,
-          };
-
-      // Bounds of the list of cards (per category), relative to container scroll space.
-      const contentRect = contentBoundsRef.current?.getBoundingClientRect();
-      const contentTop = contentRect
-        ? contentRect.top - containerRect.top + currentScroll
-        : 0;
-      const contentBottom = contentRect
-        ? contentRect.bottom - containerRect.top + currentScroll
-        : scrollHeight;
-
-      const elRect = el.getBoundingClientRect();
-
-      const elementTop = elRect.top - containerRect.top + currentScroll;
-      const elementHeight = elRect.height;
-      const elementBottom = elementTop + elementHeight;
-
-      const safeTop = topOffset;
-      const safeBottom = Math.max(0, clientHeight - bottomOffset);
-      const safeHeight = Math.max(1, safeBottom - safeTop);
-      const elementCenter = elementTop + elementHeight / 2;
-
-      // Ideal: center element within the safe viewport.
-      const idealScroll = elementCenter - (safeTop + safeHeight / 2);
-
-      // Visible range to keep the element fully on screen.
-      const minScrollToSeeBottom = elementBottom - safeBottom; // lower bound
-      const maxScrollToSeeTop = elementTop - safeTop; // upper bound
-
-      const clampedToElement =
-        minScrollToSeeBottom > maxScrollToSeeTop
-          ? (minScrollToSeeBottom + maxScrollToSeeTop) / 2
-          : Math.min(
-              Math.max(idealScroll, minScrollToSeeBottom),
-              maxScrollToSeeTop,
-            );
-
-      // Clamp to content bounds so we don't scroll past the questionnaire list.
-      const minByContent = Math.max(0, contentTop - safeTop);
-      const maxByContent = Math.max(0, contentBottom - safeBottom);
-
-      // Clamp to scrollable bounds.
-      const maxScroll = Math.max(0, scrollHeight - clientHeight);
-      const target = Math.min(
-        Math.max(clampedToElement, minByContent),
-        Math.min(maxByContent, maxScroll),
-      );
-
-      // Skip tiny nudges when we're already essentially at target.
-      if (!force && Math.abs(target - currentScroll) <= 2) return;
-
-      if (isWindowFallback) {
-        window.scrollTo({ top: target, behavior });
-      } else {
-        scrollNode.scrollTo({ top: target, behavior });
-      }
-    },
-    [],
-  );
-
-  const saveResponseHandler = React.useCallback(
-    async (
-      questionId: string,
-      value: string | number | boolean | string[] | undefined,
-    ) => {
-      const question = sessionData.items.find(
-        (item) => item.question.id === questionId,
-      )?.question;
-
-      if (!question) {
-        return;
-      }
-
-      // Handle multi-choice differently - store array in rawPayloadJson
-      if (
-        question.questionTypeCode === "multi_choice" &&
-        Array.isArray(value)
-      ) {
-        try {
-          await saveResponse.mutateAsync({
-            sessionId,
-            questionId,
-            value, // TypeScript knows this is string[] from the Array.isArray check
-            selectedOptionIds: value
-              .map((val) => {
-                // Find option IDs for the selected values
-                return question.options?.find((o) => o.value === val)?.id;
-              })
-              .filter((id): id is string => id !== undefined),
-          });
-        } catch (error: unknown) {
-          console.error("Failed to save response:", error);
-        }
-        return;
-      }
-
-      // Handle clears: send a type-compatible null-ish value so the DB stores nulls
-      let normalizedValue: string | number | boolean | string[];
-
-      if (value === undefined) {
-        if (question.questionTypeCode === "multi_choice") {
-          normalizedValue = [];
-        } else if (question.questionTypeCode === "single_choice") {
-          normalizedValue = false; // non-string so valueText becomes null
-        } else if (question.questionTypeCode === "boolean") {
-          normalizedValue = "" as unknown as string; // non-boolean so valueBoolean becomes null
-        } else {
-          // For text/scalar we currently don't support clearing via keyboard toggle
-          return;
-        }
-      } else {
-        normalizedValue = value;
-      }
-
-      // Handle single-choice, scalar, boolean, text
-      const optionId =
-        question.questionTypeCode === "single_choice"
-          ? question.options?.find((o) => o.value === value)?.id
-          : undefined;
-
-      try {
-        await saveResponse.mutateAsync({
-          sessionId,
-          questionId,
-          value: normalizedValue,
-          selectedOptionId: optionId,
-        });
-      } catch (error: unknown) {
-        console.error("Failed to save response:", error);
-      }
-    },
-    [sessionData.items, saveResponse, sessionId],
-  );
-
-  const [debouncedSave, flushDebounced] = useDebounceCallback(
-    (questionId: unknown, value: unknown) => {
-      void saveResponseHandler(
-        questionId as string,
-        value as string | number | boolean | string[] | undefined,
-      );
-    },
-    500,
-  );
+  const { saveResponseHandler, debouncedSave, flushDebounced } =
+    useSaveResponse({
+      sessionData,
+      sessionId,
+    });
 
   const { handleComplete, isCompleting } = useTestCompletion({
     sessionId,
@@ -354,73 +133,18 @@ export function TestTakingClient({
 
   // Reset intra-card virtual focus when switching categories
   React.useEffect(() => {
-    setSingleFocusIndex({});
-    setMultiFocusIndex({});
+    resetFocus();
     const nextLength = sections[currentCategoryIndex]?.items.length ?? 0;
     cardContentRefs.current = Array.from({ length: nextLength }, () => null);
     questionCardRefs.current = Array.from({ length: nextLength }, () => null);
     setActiveCardIndex(0);
-  }, [currentCategoryIndex, sections]);
-
-  const resolveOptions = React.useCallback(
-    (question: QuestionnaireItem["question"]) => {
-      if (Array.isArray(question.options) && question.options.length > 0) {
-        return question.options.map((opt) => ({
-          value: opt?.value ?? "",
-          label: opt?.label ?? "",
-        }));
-      }
-
-      const configOptions = (
-        question.configJson as {
-          options?: Array<{ value: string; label: string }>;
-        }
-      )?.options;
-      if (Array.isArray(configOptions)) {
-        return configOptions
-          .filter((opt) => opt)
-          .map((opt) => ({
-            value: opt?.value ?? "",
-            label: opt?.label ?? "",
-          }));
-      }
-
-      return [] as Array<{ value: string; label: string }>;
-    },
-    [],
-  );
-
-  const currentCategory = sections[currentCategoryIndex];
+  }, [currentCategoryIndex, sections, resetFocus]);
   const currentCardCount = currentCategory?.items.length ?? 0;
   const isLastCategory = currentCategoryIndex === sections.length - 1;
   const allQuestionsAnsweredInCategory =
     currentCategory?.items.every(
       (item) => responses[item.question.id] !== undefined,
     ) ?? false;
-
-  // Keep virtual focus for single-choice aligned with the selected answer
-  React.useEffect(() => {
-    setSingleFocusIndex((prev) => {
-      let updated = false;
-      const next: Record<string, number> = { ...prev };
-
-      currentCategory?.items?.forEach((item) => {
-        if (item.question.questionTypeCode !== "single_choice") return;
-
-        const options = resolveOptions(item.question);
-        const selectedValue = responses[item.question.id];
-        if (typeof selectedValue !== "string") return;
-
-        const idx = options.findIndex((opt) => opt.value === selectedValue);
-        if (idx >= 0 && next[item.question.id] !== idx) {
-          next[item.question.id] = idx;
-          updated = true;
-        }
-      });
-
-      return updated ? next : prev;
-    });
-  }, [responses, currentCategory, resolveOptions]);
 
   // Scroll to top when category changes
   React.useEffect(() => {
@@ -633,81 +357,90 @@ export function TestTakingClient({
 
       const questionId = question.id;
       const questionType = question.questionTypeCode;
-      const options = resolveOptions(question);
+      const options = resolveQuestionOptions(question);
       const currentValue = responses[questionId];
 
-      // Forward slider keys if needed (scalar questions)
-      if (questionType === "scalar") {
-        if (handleScalarKeyboardNavigation(event, cardContentEl as HTMLElement)) {
-          return;
+      // Dispatch to appropriate handler based on question type
+      switch (questionType) {
+        case "scalar": {
+          // Forward slider keys if needed
+          if (
+            handleScalarKeyboardNavigation(event, cardContentEl as HTMLElement)
+          ) {
+            return;
+          }
+          break;
         }
-      }
 
-      // Boolean (yes/no) cards: arrows pick a side, Enter/Space toggles
-      if (questionType === "boolean") {
-        if (
-          handleBooleanKeyboardNavigation(
-            event,
-            questionId,
-            currentValue as boolean | undefined,
-            handleResponseChange,
-          )
-        ) {
-          return;
+        case "boolean": {
+          // Boolean (yes/no) cards: arrows pick a side, Enter/Space toggles
+          if (
+            handleBooleanKeyboardNavigation(
+              event,
+              questionId,
+              currentValue as boolean | undefined,
+              handleResponseChange,
+            )
+          ) {
+            return;
+          }
+          break;
         }
-      }
 
-      // Single choice cards: arrows move selection, Enter/Space confirm
-      if (questionType === "single_choice" && options?.length) {
-        if (
-          handleSingleChoiceKeyboardNavigation(
-            event,
-            questionId,
-            options,
-            currentValue as string | undefined,
-            singleFocusIndex[questionId],
-            (qId: string, index: number) => {
-              setSingleFocusIndex((prev) => ({
-                ...prev,
-                [qId]: index,
-              }));
-            },
-            handleResponseChange,
-          )
-        ) {
-          return;
+        case "single_choice": {
+          // Single choice cards: arrows move selection, Enter/Space confirm
+          if (options?.length) {
+            if (
+              handleSingleChoiceKeyboardNavigation(
+                event,
+                questionId,
+                options,
+                currentValue as string | undefined,
+                singleFocusIndex[questionId],
+                updateSingleFocus,
+                handleResponseChange,
+              )
+            ) {
+              return;
+            }
+          }
+          break;
         }
-      }
 
-      // Multi choice cards: arrows pick target option, Enter/Space toggle it
-      if (questionType === "multi_choice" && options?.length) {
-        if (
-          handleMultiChoiceKeyboardNavigation(
-            event,
-            questionId,
-            (question.configJson ?? {}) as {
+        case "multi_choice": {
+          // Multi choice cards: arrows pick target option, Enter/Space toggle it
+          if (options?.length) {
+            const multiChoiceConfig = (question.configJson ?? {}) as {
               minSelections?: number;
               maxSelections?: number;
-            },
-            options,
-            currentValue as string[] | undefined,
-            multiFocusIndex[questionId],
-            (qId: string, index: number) => {
-              setMultiFocusIndex((prev) => ({
-                ...prev,
-                [qId]: index,
-              }));
-            },
-            handleResponseChange,
-          )
-        ) {
-          return;
+            };
+            if (
+              handleMultiChoiceKeyboardNavigation(
+                event,
+                questionId,
+                multiChoiceConfig,
+                options,
+                currentValue as string[] | undefined,
+                multiFocusIndex[questionId],
+                updateMultiFocus,
+                handleResponseChange,
+              )
+            ) {
+              return;
+            }
+          }
+          break;
         }
-      }
 
-      // Text questions: use native textarea behavior
-      if (questionType === "text") {
-        handleTextKeyboardNavigation(event, questionId);
+        case "text": {
+          // Text questions: use native textarea behavior
+          handleTextKeyboardNavigation(event, questionId);
+          break;
+        }
+
+        default:
+          // Unknown question type - no special handling
+          break;
       }
     },
     [
@@ -721,6 +454,8 @@ export function TestTakingClient({
       singleFocusIndex,
       multiFocusIndex,
       handleResponseChange,
+      updateSingleFocus,
+      updateMultiFocus,
     ],
   );
 
