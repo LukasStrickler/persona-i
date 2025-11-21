@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { env } from "@/env";
 import { logger } from "@/lib/logger";
-import { contactFormSchema, honeypotFieldName } from "@/lib/contact/schema";
+import { contactFormSchema, honeypotFieldName } from "@/lib/schemas/contact";
 import { ContactFormEmail } from "@/emails/contact-form";
 
 const resend = new Resend(env.RESEND_API_KEY);
@@ -159,6 +159,7 @@ export async function POST(request: Request) {
     }
 
     // Extract form data (already validated by contactFormSchema)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [honeypotFieldName]: _, hCaptchaToken: __, ...formData } = payload;
 
     // Check if contact email is configured

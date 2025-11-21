@@ -7,11 +7,21 @@ import { db } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { env } from "@/env";
 import { MagicLinkEmail } from "@/emails/magic-link";
-import { hashToken } from "@/lib/token-hash";
 import { logger } from "@/lib/logger";
-import { randomInt } from "crypto";
+import * as crypto from "crypto";
 
 const resend = new Resend(env.RESEND_API_KEY);
+
+/**
+ * Hash a token using SHA-256 algorithm.
+ * This matches the hashing function used by BetterAuth when storeToken is set to use a custom hasher.
+ *
+ * @param token - The plain token string to hash
+ * @returns The hashed token as a hexadecimal string
+ */
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 /**
  * Generate a 6-character alphanumeric verification token.
@@ -21,7 +31,7 @@ export function generateVerificationToken(): string {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let token = "";
   for (let i = 0; i < 6; i++) {
-    token += characters.charAt(randomInt(0, characters.length));
+    token += characters.charAt(crypto.randomInt(0, characters.length));
   }
   return token;
 }

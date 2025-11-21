@@ -8,6 +8,9 @@ import { mkdirSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { createTestUsers } from "../src/server/db/mocks/createTestUsers";
 import * as schema from "../src/server/db/schema";
+import { seedQuestionTypes } from "../src/server/db/mocks/seed/question-types";
+import { seedQuestionnaires } from "../src/server/db/mocks/seed/questionnaires";
+import { seedSyntheticSessions } from "../src/server/db/mocks/seed/synthetic-sessions";
 
 // ================================
 // HELPER FUNCTIONS
@@ -73,10 +76,23 @@ async function createTables() {
 const mockDataPresets = [
   {
     name: "full",
-    description: "Complete mock environment with test users",
+    description:
+      "Complete mock environment with test users, questionnaires, and synthetic data",
     setup: async () => {
       await createTables();
       await createTestUsers();
+      await seedQuestionTypes();
+      await seedQuestionnaires();
+      await seedSyntheticSessions();
+    },
+  },
+  {
+    name: "questionnaires",
+    description: "Tables + questionnaires (no synthetic data)",
+    setup: async () => {
+      await createTables();
+      await seedQuestionTypes();
+      await seedQuestionnaires();
     },
   },
   {
@@ -98,32 +114,162 @@ const mockDataPresets = [
 async function clearDatabase() {
   console.log("\n🗑️  Clearing database - dropping all tables...");
 
-  // Get list of all tables
-  const tablesResult = await dev_db.run(sql`
-    SELECT name FROM sqlite_master 
-    WHERE type='table' 
-    AND name NOT LIKE 'sqlite_%'
-    AND name NOT LIKE '_drizzle%'
-  `);
+  try {
+    // Disable foreign key constraints to allow dropping tables in any order
+    // This is critical for SQLite to drop tables with foreign key dependencies
+    await dev_db.run(sql`PRAGMA foreign_keys = OFF`);
 
-  const tables = tablesResult.rows.map(
-    (row) => (row as unknown as { name: string }).name,
-  );
+    // First, delete all data from all tables to prevent constraint violations
+    // This prevents CHECK constraint errors when dropping/recreating tables
+    try {
+      const allTablesResult = await dev_db.run(sql`
+        SELECT name FROM sqlite_master 
+        WHERE type='table' 
+        AND name NOT LIKE 'sqlite_%'
+        AND name NOT LIKE '_drizzle%'
+      `);
 
-  if (tables.length === 0) {
-    console.log("   ✓ Database is already empty");
-    return;
+      const allTables = allTablesResult.rows.map(
+        (row) => (row as unknown as { name: string }).name,
+      );
+
+      if (allTables.length > 0) {
+        for (const tableName of allTables) {
+          try {
+            const escapedName = tableName.replace(/"/g, '""');
+            await dev_db.run(sql.raw(`DELETE FROM "${escapedName}"`));
+          } catch {
+            // Table might not exist or might be a view, ignore
+          }
+        }
+        console.log(`   ✓ Cleaned data from ${allTables.length} table(s)`);
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+
+    // Get list of all tables
+    const tablesResult = await dev_db.run(sql`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' 
+      AND name NOT LIKE 'sqlite_%'
+      AND name NOT LIKE '_drizzle%'
+      ORDER BY name DESC
+    `);
+
+    const tables = tablesResult.rows.map(
+      (row) => (row as unknown as { name: string }).name,
+    );
+
+    if (tables.length === 0) {
+      console.log("   ✓ Database is already empty");
+      // Re-enable foreign keys
+      await dev_db.run(sql`PRAGMA foreign_keys = ON`);
+      return;
+    }
+
+    // Drop all existing tables (including auth tables)
+    // Use IF EXISTS to handle cases where tables don't exist
+    // Drop in reverse order to minimize dependency issues
+    let droppedCount = 0;
+    for (const table of tables) {
+      try {
+        // Use sql.raw with proper escaping for table names
+        // SQLite table names can be quoted with double quotes
+        const tableName = table.replace(/"/g, '""');
+        await dev_db.run(sql.raw(`DROP TABLE IF EXISTS "${tableName}"`));
+        console.log(`   ✓ Dropped table: ${table}`);
+        droppedCount++;
+      } catch (error) {
+        // Log warning but continue - table might already be dropped
+        // or might have been dropped as a dependency
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        // Only warn if it's not a "no such table" error (which is expected)
+        if (!errorMessage.includes("no such table")) {
+          console.warn(`   ⚠️  Could not drop table ${table}: ${errorMessage}`);
+        }
+      }
+    }
+
+    // Clean up any remaining indexes that might reference dropped tables
+    try {
+      const indexesResult = await dev_db.run(sql`
+        SELECT name FROM sqlite_master 
+        WHERE type='index' 
+        AND name NOT LIKE 'sqlite_%'
+        AND name NOT LIKE '_drizzle%'
+      `);
+
+      const indexes = indexesResult.rows.map(
+        (row) => (row as unknown as { name: string }).name,
+      );
+
+      for (const index of indexes) {
+        try {
+          const indexName = index.replace(/"/g, '""');
+          await dev_db.run(sql.raw(`DROP INDEX IF EXISTS "${indexName}"`));
+        } catch {
+          // Ignore index drop errors
+        }
+      }
+    } catch {
+      // Ignore index cleanup errors
+    }
+
+    // Drop any remaining views or triggers
+    try {
+      await dev_db.run(sql`PRAGMA foreign_keys = OFF`);
+      // Force drop any remaining constraints
+      const allObjects = await dev_db.run(sql`
+        SELECT name, type FROM sqlite_master 
+        WHERE type IN ('table', 'index', 'trigger', 'view')
+        AND name NOT LIKE 'sqlite_%'
+        AND name NOT LIKE '_drizzle%'
+      `);
+
+      for (const obj of allObjects.rows) {
+        const objData = obj as unknown as { name: string; type: string };
+        const objName = objData.name;
+        const objType = objData.type;
+        try {
+          const escapedName = objName.replace(/"/g, '""');
+          if (objType === "table") {
+            await dev_db.run(sql.raw(`DROP TABLE IF EXISTS "${escapedName}"`));
+          } else if (objType === "index") {
+            await dev_db.run(sql.raw(`DROP INDEX IF EXISTS "${escapedName}"`));
+          } else if (objType === "trigger") {
+            await dev_db.run(
+              sql.raw(`DROP TRIGGER IF EXISTS "${escapedName}"`),
+            );
+          } else if (objType === "view") {
+            await dev_db.run(sql.raw(`DROP VIEW IF EXISTS "${escapedName}"`));
+          }
+        } catch {
+          // Ignore errors
+        }
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+
+    // Re-enable foreign key constraints
+    await dev_db.run(sql`PRAGMA foreign_keys = ON`);
+
+    console.log(
+      `\n✅ Cleared ${droppedCount} of ${tables.length} table(s) including all auth users and data`,
+    );
+  } catch (error) {
+    // Always re-enable foreign keys even if there's an error
+    try {
+      await dev_db.run(sql`PRAGMA foreign_keys = ON`);
+    } catch {
+      // Ignore errors when re-enabling
+    }
+
+    console.error("\n❌ Error clearing database:", error);
+    throw error;
   }
-
-  // Drop all existing tables (including auth tables)
-  for (const table of tables) {
-    await dev_db.run(sql`DROP TABLE IF EXISTS ${sql.identifier(table)}`);
-    console.log(`   ✓ Dropped table: ${table}`);
-  }
-
-  console.log(
-    `\n✅ Cleared ${tables.length} table(s) including all auth users and data`,
-  );
 }
 
 async function main() {

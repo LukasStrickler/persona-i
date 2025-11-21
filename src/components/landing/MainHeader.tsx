@@ -284,6 +284,7 @@ export function MainHeaderContentWrapper({
       />
       {/* Fixed wrapper that clips content to prevent rendering under header */}
       <div
+        id="main-scroll-container"
         className="hide-scrollbar fixed top-0 right-0 bottom-0 left-0 z-40 overflow-y-auto"
         style={{
           // Use clip-path to hide content in the top 64px (header height only)

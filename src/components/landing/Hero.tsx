@@ -51,10 +51,10 @@ export function Hero() {
   };
 
   return (
-    <section className="mx-auto mt-24 max-w-7xl px-4 py-6 sm:py-12 md:mt-12">
+    <section className="mx-auto mt-8 max-w-7xl px-4 py-6 sm:py-12">
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
         {/* Left: Content */}
-        <div className="flex flex-col justify-center space-y-6 text-center lg:text-left">
+        <div className="flex flex-col justify-center space-y-4 text-center lg:text-left">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
             Compare your personality with leading AI models.
           </h1>
@@ -95,7 +95,7 @@ export function Hero() {
         </div>
 
         {/* Right: Tests Grid */}
-        <div className="mt-8 flex flex-col justify-center md:mt-0">
+        <div className="flex flex-col justify-center md:mt-2">
           <div className="grid grid-cols-2 gap-4">
             {tests.map((test) => {
               const Icon = test.icon;

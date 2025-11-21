@@ -86,11 +86,13 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     margin: 0;
     padding: 0;
   }
+
   html {
     margin: 0;
     padding: 0;
@@ -98,15 +100,17 @@
 }
 
 @layer utilities {
+
   /* Hover effects only on devices with hover capability */
   @media (hover: hover) and (pointer: fine) {
     .hover-only:hover {
       /* Hover styles are applied via Tailwind classes */
     }
   }
-  
+
   /* Disable hover on touch devices */
-  @media (hover: none), (pointer: coarse) {
+  @media (hover: none),
+  (pointer: coarse) {
     .hover-only:hover {
       /* No hover effects on touch devices */
     }
@@ -114,9 +118,26 @@
 
   /* Shake animation for error states */
   @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-    20%, 40%, 60%, 80% { transform: translateX(4px); }
+
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: translateX(-4px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: translateX(4px);
+    }
   }
 
   .animate-shake {
@@ -133,5 +154,40 @@
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Shared focus rings to avoid fighting hover styles */
+  .focus-ring {
+    outline: 2px solid color-mix(in srgb, var(--ring) 90%, transparent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
+  }
+
+  .focus-ring-inset {
+    outline: 2px solid color-mix(in srgb, var(--ring) 90%, transparent);
+    outline-offset: 2px;
+  }
+
+  .focusable-question-card:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .question-card-focus-gradient {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius);
+    transition: box-shadow 0.4s ease-out;
+  }
+
+  .question-card-focus-gradient:focus-within {
+    box-shadow:
+      inset 0 0 6px 0 color-mix(in srgb, var(--primary) 66%, transparent);
+  }
+
+  .question-card-focus-gradient>* {
+    position: relative;
+    z-index: 1;
   }
 }
