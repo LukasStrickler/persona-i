@@ -8,7 +8,15 @@ import drizzle from "eslint-plugin-drizzle";
 export default tseslint.config(
   // Note: Next.js ESLint config (next/core-web-vitals) has a circular structure issue
   {
-    ignores: [".next", "node_modules", "out", "build", "dist", ".OLD_CODE"],
+    ignores: [
+      ".next",
+      "node_modules",
+      "out",
+      "build",
+      "dist",
+      ".OLD_CODE",
+      "coverage",
+    ],
   },
   // with FlatCompat in Next.js 16. Using TypeScript ESLint configs only for now.
   // This doesn't affect functionality - build and runtime work correctly.

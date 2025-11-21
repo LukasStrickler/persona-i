@@ -21,6 +21,21 @@ export default defineConfig({
     },
   },
   test: {
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov"],
+      reportsDirectory: process.env.COVERAGE_DIR ?? "./coverage",
+      exclude: [
+        "node_modules/",
+        ".next/",
+        "**/*.stories.tsx",
+        "**/*.config.ts",
+        "**/*.config.js",
+        "**/__tests__/**",
+        ".storybook/**",
+        "scripts/**",
+      ],
+    },
     projects: [
       // Storybook tests project - tests stories in browser
       // Note: The Storybook plugin may show "No story files found" warnings when running
