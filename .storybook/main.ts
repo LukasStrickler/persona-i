@@ -11,6 +11,8 @@ const config: StorybookConfig = {
     "../src/components/**/*.mdx",
     "../src/app/**/*.stories.@(js|jsx|mjs|ts|tsx)",
     "../src/app/**/*.mdx",
+    "../src/stories/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../src/stories/**/*.mdx",
     // Exclude test directories
     "!../src/**/__tests__/**",
   ],
