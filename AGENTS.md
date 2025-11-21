@@ -110,13 +110,15 @@ When behavior, data, or flows change in a meaningful way:
 
 ### 5.2 Tests
 
-- Prefer tests for logic that’s easy to isolate:
+- Run `bun run test:all` to execute all tests. (`bun run test:unit`, `bun run test:integration`, `bun run test:e2e`)
+- Prefer tests for logic that's easy to isolate:
   - Pure utility functions.
   - Data mapping, validation, and store behavior.
   - Non-trivial component behavior (e.g., keyboard navigation).
 - Map out edge cases and add tests for them.
 - Keep tests close to what they cover (same folder or a nearby `__tests__` folder).
-- Structure tests so they can run under the existing Vitest configuration.
+- **Unit and Integration Tests**: Use Vitest (`*.unit.test.ts`, `*.integration.test.ts`). Structure tests so they can run under the existing Vitest configuration.
+- **E2E Tests**: Use Playwright's test API directly (`*.e2e.test.ts`). These use `import { test, expect } from "playwright/test"` and are configured via `playwright.config.ts`. Test results are stored in `.test-results/` (gitignored).
 - After adding tests, re-run `bun run agent:finalize`.
 
 ## 6. Do / Don't
