@@ -99,6 +99,15 @@ jobs:
 
       - name: Run unit tests with coverage
         run: COVERAGE_DIR=./coverage/unit bun run test:unit --coverage
+        env:
+          # Required for env validation (env.js) - unit tests may import code that uses env
+          DATABASE_URL: "file::memory:"
+          DATABASE_TOKEN: "test-token"
+          NODE_ENV: "test"
+          BETTER_AUTH_SECRET: "test-secret-minimum-32-characters-long-for-validation"
+          RESEND_API_KEY: "test-resend-key"
+          RESEND_FROM: "test@example.com"
+          CONTACT_EMAIL: "test@example.com"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -125,6 +134,15 @@ jobs:
 
       - name: Run integration tests with coverage
         run: COVERAGE_DIR=./coverage/integration bun run test:integration --coverage
+        env:
+          # Required for env validation (env.js)
+          DATABASE_URL: "file::memory:"
+          DATABASE_TOKEN: "test-token"
+          NODE_ENV: "test"
+          BETTER_AUTH_SECRET: "test-secret-minimum-32-characters-long-for-validation"
+          RESEND_API_KEY: "test-resend-key"
+          RESEND_FROM: "test@example.com"
+          CONTACT_EMAIL: "test@example.com"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
