@@ -1,7 +1,4 @@
-"use client";
-
 import * as React from "react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import type { BooleanConfig } from "@/lib/types/question-types";
 import { QuestionCard } from "./QuestionCard";
@@ -15,7 +12,7 @@ export interface BooleanQuestionProps {
     config: BooleanConfig;
   };
   value?: boolean;
-  onChange: (value: boolean) => void;
+  onChange: (value: boolean | undefined) => void;
   disabled?: boolean;
   questionNumber?: number;
 }
@@ -39,15 +36,35 @@ export function BooleanQuestion({
     { value: "false", label: falseLabel },
   ];
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+
+    switch (e.key) {
+      case "ArrowLeft":
+      case "ArrowUp":
+        e.preventDefault();
+        onChange(true);
+        break;
+      case "ArrowRight":
+      case "ArrowDown":
+        e.preventDefault();
+        onChange(false);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <QuestionCard prompt={question.prompt} questionNumber={questionNumber}>
-      <RadioGroup
-        value={value === undefined ? undefined : value ? "true" : "false"}
-        onValueChange={handleValueChange}
-        disabled={disabled}
-        className="grid grid-cols-2 gap-2" // L/R layout
+      <div
+        role="radiogroup"
+        aria-label={question.prompt}
+        className="grid grid-cols-2 gap-2 outline-none"
+        tabIndex={disabled ? -1 : 0}
+        onKeyDown={handleKeyDown}
       >
-        {options.map((option) => {
+        {options.map((option, _index) => {
           const isSelected =
             (value === undefined ? undefined : value ? "true" : "false") ===
             option.value;
@@ -56,23 +73,26 @@ export function BooleanQuestion({
               key={option.value}
               whileTap={{ scale: 0.975 }}
               transition={{ type: "spring", bounce: 0.3, duration: 0.3 }}
+              className={cn(
+                "group relative mx-auto flex w-16 cursor-pointer items-center justify-center gap-2 rounded-lg border p-2 text-center transition-all duration-400 md:w-48",
+                isSelected
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border/50 hover:border-primary/50 hover:bg-primary/5",
+                disabled && "cursor-not-allowed opacity-50",
+              )}
+              onClick={() => {
+                if (disabled) return;
+                if (isSelected) {
+                  onChange(undefined);
+                  return;
+                }
+                handleValueChange(option.value);
+              }}
             >
               <Label
                 htmlFor={`${question.id}-${option.value}`}
-                className={cn(
-                  "group relative mx-auto flex w-16 cursor-pointer items-center justify-center gap-2 rounded-lg border p-2 text-center transition-all duration-400 md:w-48",
-                  isSelected
-                    ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-border/50 hover:border-primary/50 hover:bg-primary/5",
-                  disabled && "cursor-not-allowed opacity-50",
-                )}
+                className="pointer-events-none flex h-full w-full cursor-pointer items-center justify-center"
               >
-                <RadioGroupItem
-                  value={option.value}
-                  id={`${question.id}-${option.value}`}
-                  className="sr-only"
-                />
-
                 <span
                   className={cn(
                     "z-10 text-sm font-medium transition-colors sm:text-base",
@@ -81,23 +101,28 @@ export function BooleanQuestion({
                 >
                   {option.label}
                 </span>
-
-                {/* Selection Highlight Effect */}
-                {isSelected && (
-                  <motion.div
-                    layoutId={`selection-highlight-bool-${question.id}`}
-                    className="border-primary pointer-events-none absolute inset-0 rounded-lg border-2"
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ type: "spring", stiffness: 250, damping: 25 }}
-                  />
-                )}
               </Label>
+
+              {/* Selection Highlight Effect */}
+              {isSelected && (
+                <motion.div
+                  layoutId={`selection-highlight-bool-${question.id}`}
+                  className="border-primary pointer-events-none absolute inset-0 rounded-lg border-2"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 250,
+                    damping: 25,
+                  }}
+                  style={{ willChange: "transform, opacity" }}
+                />
+              )}
             </motion.div>
           );
         })}
-      </RadioGroup>
+      </div>
     </QuestionCard>
   );
 }

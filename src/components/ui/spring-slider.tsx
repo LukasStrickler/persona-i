@@ -245,7 +245,7 @@ export function SpringSlider({
       >
         <div
           role="slider"
-          tabIndex={disabled ? -1 : 0}
+          tabIndex={-1} // Focus is managed at the card level to avoid unexpected tab stops
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={value}

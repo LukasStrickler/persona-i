@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -18,6 +16,8 @@ export interface MultiChoiceQuestionProps {
   onChange: (value: string[]) => void;
   disabled?: boolean;
   questionNumber?: number;
+  focusIndex?: number;
+  onFocusIndexChange?: (index: number) => void;
 }
 
 export function MultiChoiceQuestion({
@@ -26,8 +26,29 @@ export function MultiChoiceQuestion({
   onChange,
   disabled = false,
   questionNumber,
+  focusIndex,
+  onFocusIndexChange,
 }: MultiChoiceQuestionProps) {
   const selectedValues = React.useMemo(() => new Set(value), [value]);
+  const [internalFocusIndex, setInternalFocusIndex] =
+    React.useState<number>(-1);
+
+  const resolvedFocusIndex = focusIndex ?? internalFocusIndex;
+
+  const setFocusIndex = (next: number | ((prev: number) => number)) => {
+    const nextValue =
+      typeof next === "function" ? next(resolvedFocusIndex) : next;
+
+    onFocusIndexChange?.(nextValue);
+    if (focusIndex === undefined) {
+      setInternalFocusIndex(nextValue);
+    }
+  };
+
+  // Reset focused index when question changes
+  React.useEffect(() => {
+    setFocusIndex(-1);
+  }, [question.id]);
 
   const handleOptionToggle = (optionValue: string) => {
     const newSelected = new Set(selectedValues);
@@ -51,6 +72,37 @@ export function MultiChoiceQuestion({
   const currentCount = selectedValues.size;
   const canSelectMore = maxSelections ? currentCount < maxSelections : true;
   const mustSelectMore = currentCount < minSelections;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+    const options = question.config.options;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setFocusIndex((prev) => (prev < 0 ? 0 : (prev + 1) % options.length));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setFocusIndex((prev) =>
+          prev < 0
+            ? options.length - 1
+            : (prev - 1 + options.length) % options.length,
+        );
+        break;
+      case " ":
+      case "Enter":
+        e.preventDefault();
+        if (
+          resolvedFocusIndex >= 0 &&
+          resolvedFocusIndex < options.length &&
+          options[resolvedFocusIndex]
+        ) {
+          handleOptionToggle(options[resolvedFocusIndex].value);
+        }
+        break;
+    }
+  };
 
   return (
     <QuestionCard prompt={question.prompt} questionNumber={questionNumber}>
@@ -95,9 +147,15 @@ export function MultiChoiceQuestion({
           </div>
         )}
 
-        <div className="grid gap-2">
-          {question.config.options.map((option) => {
+        <div
+          className="grid gap-2 outline-none"
+          tabIndex={disabled ? -1 : 0}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setFocusIndex(-1)}
+        >
+          {question.config.options.map((option, optionIndex) => {
             const isSelected = selectedValues.has(option.value);
+            const isFocused = resolvedFocusIndex === optionIndex;
             // Prevent deselecting when already at the minimum selection count
             const isDisabled =
               disabled ||
@@ -109,26 +167,34 @@ export function MultiChoiceQuestion({
                 key={option.value}
                 whileTap={{ scale: 0.99 }}
                 transition={{ type: "spring", bounce: 0.3, duration: 0.3 }}
+                className={cn(
+                  "group relative flex transform-gpu cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all duration-300 will-change-transform outline-none select-none",
+                  isSelected
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border/50 hover:border-primary/50 hover:bg-primary/5",
+                  isFocused &&
+                    !isSelected &&
+                    "ring-primary/50 bg-primary/5 ring-2",
+                  isFocused &&
+                    isSelected &&
+                    "ring-primary ring-2 ring-offset-2",
+                  isDisabled &&
+                    "hover:border-border/50 cursor-not-allowed opacity-50 hover:bg-transparent",
+                )}
+                onClick={() => !isDisabled && handleOptionToggle(option.value)}
+                onMouseEnter={() => !disabled && setFocusIndex(optionIndex)}
               >
                 <Label
                   htmlFor={`${question.id}-${option.value}`}
-                  className={cn(
-                    "group relative flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all duration-300 select-none",
-                    isSelected
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border/50 hover:border-primary/50 hover:bg-primary/5",
-                    isDisabled &&
-                      "hover:border-border/50 cursor-not-allowed opacity-50 hover:bg-transparent",
-                  )}
+                  className="pointer-events-none flex w-full cursor-pointer items-center gap-3"
                 >
                   <Checkbox
                     id={`${question.id}-${option.value}`}
                     checked={isSelected}
-                    onCheckedChange={() =>
-                      !isDisabled && handleOptionToggle(option.value)
-                    }
+                    onCheckedChange={() => void 0} // Handled by parent div onClick
                     disabled={isDisabled}
-                    className="sr-only" // Hide default checkbox to use custom visual
+                    className="sr-only"
+                    tabIndex={-1}
                   />
 
                   {/* Custom Checkbox Visual */}
@@ -166,23 +232,24 @@ export function MultiChoiceQuestion({
                   <span className="flex-1 text-sm leading-none font-medium sm:text-base">
                     {option.label}
                   </span>
-
-                  {/* Selection Highlight Effect */}
-                  {isSelected && (
-                    <motion.div
-                      layoutId={`selection-highlight-multi-${question.id}-${option.value}`}
-                      className="border-primary pointer-events-none absolute inset-0 rounded-lg border-2"
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.98 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 250,
-                        damping: 25,
-                      }}
-                    />
-                  )}
                 </Label>
+
+                {/* Selection Highlight Effect */}
+                {isSelected && (
+                  <motion.div
+                    layoutId={`selection-highlight-multi-${question.id}-${option.value}`}
+                    className="border-primary pointer-events-none absolute inset-0 rounded-lg border-2"
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 250,
+                      damping: 25,
+                    }}
+                    style={{ willChange: "transform, opacity" }}
+                  />
+                )}
               </motion.div>
             );
           })}

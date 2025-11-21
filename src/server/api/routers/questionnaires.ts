@@ -18,13 +18,13 @@ import {
 } from "@/server/db/schema";
 import { mapResponseValueToData } from "@/server/lib/responses";
 import { logger } from "@/lib/logger";
-import { db } from "@/server/db";
+import type { db as DbInstance } from "@/server/db";
 
 /**
  * Get or create a subject profile for a user
  */
 async function getOrCreateSubjectProfile(
-  dbInstance: typeof db,
+  dbInstance: typeof DbInstance,
   userId: string,
   userName: string | null,
   userEmail: string,

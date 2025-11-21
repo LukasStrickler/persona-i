@@ -26,9 +26,11 @@ export interface Question {
 export interface QuestionRendererProps {
   question: Question;
   value?: string | number | boolean | string[];
-  onChange: (value: string | number | boolean | string[]) => void;
+  onChange: (value: string | number | boolean | string[] | undefined) => void;
   disabled?: boolean;
   questionNumber?: number;
+  multiChoiceFocusIndex?: number;
+  onMultiChoiceFocusIndexChange?: (index: number) => void;
 }
 
 /**
@@ -41,6 +43,8 @@ export function QuestionRenderer({
   onChange,
   disabled = false,
   questionNumber,
+  multiChoiceFocusIndex,
+  onMultiChoiceFocusIndexChange,
 }: QuestionRendererProps) {
   // Validate question type
   if (!isQuestionTypeCode(question.questionTypeCode)) {
@@ -132,6 +136,8 @@ export function QuestionRenderer({
           onChange={(val) => onChange(val)}
           disabled={disabled}
           questionNumber={questionNumber}
+          focusIndex={multiChoiceFocusIndex}
+          onFocusIndexChange={onMultiChoiceFocusIndexChange}
         />
       );
 

@@ -134,4 +134,60 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Shared focus rings to avoid fighting hover styles */
+  .focus-ring {
+    outline: 2px solid color-mix(in srgb, var(--ring) 90%, transparent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
+  }
+
+  .focus-ring-inset {
+    outline: 2px solid color-mix(in srgb, var(--ring) 90%, transparent);
+    outline-offset: 2px;
+  }
+
+  .focusable-question-card:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .question-card-focus-gradient {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius);
+  }
+
+  .question-card-focus-gradient:focus-within::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+      from 120deg,
+      color-mix(in srgb, var(--ring) 38%, transparent),
+      color-mix(in srgb, var(--ring) 18%, transparent),
+      color-mix(in srgb, var(--ring) 38%, transparent)
+    );
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Cover the center so only a 4px band shows */
+  .question-card-focus-gradient:focus-within::after {
+    content: "";
+    position: absolute;
+    inset: 4px; /* band thickness */
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--card);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .question-card-focus-gradient > * {
+    position: relative;
+    z-index: 1;
+  }
 }
