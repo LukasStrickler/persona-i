@@ -22,7 +22,7 @@ export function QuestionCard({
     <div className="space-y-0">
       <div className="flex items-start gap-4">
         {questionNumber !== undefined && (
-          <div className="bg-primary/10 text-primary mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+          <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold">
             {questionNumber}
           </div>
         )}
