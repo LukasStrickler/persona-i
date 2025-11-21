@@ -119,7 +119,6 @@ When behavior, data, or flows change in a meaningful way:
 - Structure tests so they can run under the existing Vitest configuration.
 - After adding tests, re-run `bun run agent:finalize`.
 
-
 ## 6. Do / Don’t
 
 **Do**
