@@ -5,6 +5,90 @@ import { QuestionCard } from "./QuestionCard";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+export function handleSingleChoiceKeyboardNavigation(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  questionId: string,
+  options: Array<{ value: string; label: string }>,
+  currentValue: string | undefined,
+  storedFocus: number | undefined,
+  onFocusChange: (questionId: string, index: number) => void,
+  onResponseChange: (questionId: string, value: string | undefined) => void,
+): boolean {
+  // Single choice cards: arrows move selection, Enter/Space confirm
+  if (!options?.length) return false;
+
+  const currentIndex =
+    typeof currentValue === "string"
+      ? options.findIndex((o) => o?.value === currentValue)
+      : -1;
+  const focusedIndexForQuestion =
+    storedFocus ?? (currentIndex >= 0 ? currentIndex : 0);
+
+  const updateFocus = (nextIndex: number) => {
+    onFocusChange(questionId, nextIndex);
+  };
+
+  const setByIndex = (nextIndex: number) => {
+    const target = options[nextIndex];
+    if (!target) return;
+    updateFocus(nextIndex);
+    onResponseChange(questionId, target.value);
+  };
+
+  if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+    event.preventDefault();
+    const nextIndex =
+      focusedIndexForQuestion < 0
+        ? 0
+        : Math.min(focusedIndexForQuestion + 1, options.length - 1);
+    setByIndex(nextIndex);
+    return true;
+  }
+
+  if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+    event.preventDefault();
+    const nextIndex =
+      focusedIndexForQuestion < 0
+        ? options.length - 1
+        : Math.max(focusedIndexForQuestion - 1, 0);
+    setByIndex(nextIndex);
+    return true;
+  }
+
+  if (event.key === "Home") {
+    event.preventDefault();
+    setByIndex(0);
+    return true;
+  }
+
+  if (event.key === "End") {
+    event.preventDefault();
+    setByIndex(options.length - 1);
+    return true;
+  }
+
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    const safeIndex =
+      focusedIndexForQuestion >= 0 && focusedIndexForQuestion < options.length
+        ? focusedIndexForQuestion
+        : currentIndex >= 0
+          ? currentIndex
+          : 0;
+    const target = options[safeIndex];
+    if (!target) return false;
+    if (currentValue === target.value) {
+      onResponseChange(questionId, undefined);
+      updateFocus(safeIndex);
+      return true;
+    }
+    setByIndex(safeIndex);
+    return true;
+  }
+
+  return false;
+}
+
 export interface SingleChoiceQuestionProps {
   question: {
     id: string;

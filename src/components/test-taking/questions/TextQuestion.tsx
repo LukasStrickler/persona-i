@@ -5,6 +5,14 @@ import { Textarea } from "@/components/ui/textarea";
 import type { TextConfig } from "@/lib/types/question-types";
 import { QuestionCard } from "./QuestionCard";
 
+export function handleTextKeyboardNavigation(
+  _event: React.KeyboardEvent<HTMLDivElement>,
+  _questionId: string,
+): boolean {
+  // Text questions use native textarea behavior, no special handling needed
+  return false;
+}
+
 export interface TextQuestionProps {
   question: {
     id: string;

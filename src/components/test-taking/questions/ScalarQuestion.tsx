@@ -6,6 +6,45 @@ import type { ScalarConfig } from "@/lib/types/question-types";
 import { QuestionCard } from "./QuestionCard";
 import { motion } from "framer-motion";
 
+const SLIDER_CONTROL_KEYS = new Set([
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+]);
+
+export function handleScalarKeyboardNavigation(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  cardContentEl: HTMLElement,
+): boolean {
+  // Forward slider keys if needed
+  if (SLIDER_CONTROL_KEYS.has(event.key)) {
+    const sliderThumb =
+      cardContentEl.querySelector<HTMLElement>('[role="slider"]');
+    // Only forward if the slider thumb itself isn't already focused
+    if (sliderThumb && document.activeElement !== sliderThumb) {
+      event.preventDefault();
+      const forwardedEvent = new KeyboardEvent("keydown", {
+        key: event.key,
+        code: event.code,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+        bubbles: true,
+        cancelable: true,
+      });
+      sliderThumb.dispatchEvent(forwardedEvent);
+      return true;
+    }
+  }
+  return false;
+}
+
 export interface ScalarQuestionProps {
   question: {
     id: string;

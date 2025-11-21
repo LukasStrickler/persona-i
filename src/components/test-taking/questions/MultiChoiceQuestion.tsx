@@ -6,6 +6,93 @@ import { QuestionCard } from "./QuestionCard";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+export function handleMultiChoiceKeyboardNavigation(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  questionId: string,
+  questionConfig: { minSelections?: number; maxSelections?: number },
+  options: Array<{ value: string; label: string }>,
+  currentValue: string[] | undefined,
+  storedFocus: number | undefined,
+  onFocusChange: (questionId: string, index: number) => void,
+  onResponseChange: (questionId: string, value: string[]) => void,
+): boolean {
+  // Multi choice cards: arrows pick target option, Enter/Space toggle it
+  if (!options?.length) return false;
+
+  const minSelections = questionConfig?.minSelections ?? 0;
+  const maxSelections = questionConfig?.maxSelections;
+  const currentSelections = Array.isArray(currentValue) ? currentValue : [];
+  const currentSet = new Set(currentSelections);
+  const firstSelectedIndex = options.findIndex((option) =>
+    currentSet.has(option?.value ?? ""),
+  );
+  const fallbackIndex =
+    storedFocus !== undefined && storedFocus >= 0
+      ? storedFocus
+      : firstSelectedIndex >= 0
+        ? firstSelectedIndex
+        : 0;
+
+  const clampIndex = (idx: number) =>
+    Math.min(Math.max(idx, 0), options.length - 1);
+
+  const updateFocus = (idx: number) =>
+    onFocusChange(questionId, clampIndex(idx));
+
+  const toggleSelection = (targetIdx: number) => {
+    const option = options[targetIdx];
+    if (!option) return;
+    const nextSet = new Set(currentSet);
+
+    if (nextSet.has(option.value)) {
+      if (nextSet.size > minSelections) {
+        nextSet.delete(option.value);
+      }
+    } else if (!maxSelections || nextSet.size < maxSelections) {
+      nextSet.add(option.value);
+    }
+
+    onResponseChange(questionId, Array.from(nextSet));
+    updateFocus(targetIdx);
+  };
+
+  if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+    event.preventDefault();
+    updateFocus(fallbackIndex + 1);
+    return true;
+  }
+
+  if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+    event.preventDefault();
+    updateFocus(fallbackIndex - 1);
+    return true;
+  }
+
+  if (event.key === "Home") {
+    event.preventDefault();
+    updateFocus(0);
+    return true;
+  }
+
+  if (event.key === "End") {
+    event.preventDefault();
+    updateFocus(options.length - 1);
+    return true;
+  }
+
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    const targetIdx =
+      storedFocus !== undefined && storedFocus >= 0
+        ? clampIndex(storedFocus)
+        : clampIndex(fallbackIndex);
+    toggleSelection(targetIdx);
+    return true;
+  }
+
+  return false;
+}
+
 export interface MultiChoiceQuestionProps {
   question: {
     id: string;

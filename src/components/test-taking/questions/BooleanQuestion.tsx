@@ -5,6 +5,35 @@ import { QuestionCard } from "./QuestionCard";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+export function handleBooleanKeyboardNavigation(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  questionId: string,
+  currentValue: boolean | undefined,
+  onResponseChange: (questionId: string, value: boolean | undefined) => void,
+): boolean {
+  // Boolean (yes/no) cards: arrows pick a side, Enter/Space toggles
+  if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+    event.preventDefault();
+    onResponseChange(questionId, true);
+    return true;
+  }
+  if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+    event.preventDefault();
+    onResponseChange(questionId, false);
+    return true;
+  }
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    if (typeof currentValue === "boolean") {
+      onResponseChange(questionId, undefined);
+    } else {
+      onResponseChange(questionId, true);
+    }
+    return true;
+  }
+  return false;
+}
+
 export interface BooleanQuestionProps {
   question: {
     id: string;

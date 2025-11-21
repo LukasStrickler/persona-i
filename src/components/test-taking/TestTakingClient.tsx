@@ -12,17 +12,11 @@ import { cn } from "@/lib/utils";
 import type { QuestionnaireItem } from "@/lib/types/questionnaire-responses";
 import { useTestCompletion } from "@/hooks/useTestCompletion";
 import { buildResponsesPayload } from "@/lib/utils/questionnaire-responses";
-
-const SLIDER_CONTROL_KEYS = new Set([
-  "ArrowLeft",
-  "ArrowRight",
-  "ArrowUp",
-  "ArrowDown",
-  "Home",
-  "End",
-  "PageUp",
-  "PageDown",
-]);
+import { handleScalarKeyboardNavigation } from "./questions/ScalarQuestion";
+import { handleBooleanKeyboardNavigation } from "./questions/BooleanQuestion";
+import { handleSingleChoiceKeyboardNavigation } from "./questions/SingleChoiceQuestion";
+import { handleMultiChoiceKeyboardNavigation } from "./questions/MultiChoiceQuestion";
+import { handleTextKeyboardNavigation } from "./questions/TextQuestion";
 
 interface TestTakingClientProps {
   sessionData: {
@@ -637,215 +631,83 @@ export function TestTakingClient({
         return;
       }
 
-      // Forward slider keys if needed
-      if (SLIDER_CONTROL_KEYS.has(event.key)) {
-        const sliderThumb =
-          cardContentEl.querySelector<HTMLElement>('[role="slider"]');
-        // Only forward if the slider thumb itself isn't already focused
-        if (sliderThumb && document.activeElement !== sliderThumb) {
-          event.preventDefault();
-          const forwardedEvent = new KeyboardEvent("keydown", {
-            key: event.key,
-            code: event.code,
-            altKey: event.altKey,
-            ctrlKey: event.ctrlKey,
-            metaKey: event.metaKey,
-            shiftKey: event.shiftKey,
-            bubbles: true,
-            cancelable: true,
-          });
-          sliderThumb.dispatchEvent(forwardedEvent);
-          return;
-        }
-      }
-
       const questionId = question.id;
       const questionType = question.questionTypeCode;
       const options = resolveOptions(question);
       const currentValue = responses[questionId];
 
+      // Forward slider keys if needed (scalar questions)
+      if (questionType === "scalar") {
+        if (handleScalarKeyboardNavigation(event, cardContentEl as HTMLElement)) {
+          return;
+        }
+      }
+
       // Boolean (yes/no) cards: arrows pick a side, Enter/Space toggles
       if (questionType === "boolean") {
-        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-          event.preventDefault();
-          handleResponseChange(questionId, true);
-          return;
-        }
-        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-          event.preventDefault();
-          handleResponseChange(questionId, false);
-          return;
-        }
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          if (typeof currentValue === "boolean") {
-            handleResponseChange(questionId, undefined);
-          } else {
-            handleResponseChange(questionId, true);
-          }
+        if (
+          handleBooleanKeyboardNavigation(
+            event,
+            questionId,
+            currentValue as boolean | undefined,
+            handleResponseChange,
+          )
+        ) {
           return;
         }
       }
 
       // Single choice cards: arrows move selection, Enter/Space confirm
       if (questionType === "single_choice" && options?.length) {
-        const currentIndex =
-          typeof currentValue === "string"
-            ? options.findIndex((o) => o?.value === currentValue)
-            : -1;
-        const focusedIndexForQuestion =
-          singleFocusIndex[questionId] ??
-          (currentIndex >= 0 ? currentIndex : 0);
-
-        const updateFocus = (nextIndex: number) => {
-          setSingleFocusIndex((prev) => ({
-            ...prev,
-            [questionId]: nextIndex,
-          }));
-        };
-
-        const setByIndex = (nextIndex: number) => {
-          const target = options[nextIndex];
-          if (!target) return;
-          updateFocus(nextIndex);
-          handleResponseChange(questionId, target.value);
-        };
-
-        if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-          event.preventDefault();
-          const nextIndex =
-            focusedIndexForQuestion < 0
-              ? 0
-              : Math.min(focusedIndexForQuestion + 1, options.length - 1);
-          setByIndex(nextIndex);
-          return;
-        }
-
-        if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-          event.preventDefault();
-          const nextIndex =
-            focusedIndexForQuestion < 0
-              ? options.length - 1
-              : Math.max(focusedIndexForQuestion - 1, 0);
-          setByIndex(nextIndex);
-          return;
-        }
-
-        if (event.key === "Home") {
-          event.preventDefault();
-          setByIndex(0);
-          return;
-        }
-
-        if (event.key === "End") {
-          event.preventDefault();
-          setByIndex(options.length - 1);
-          return;
-        }
-
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          const safeIndex =
-            focusedIndexForQuestion >= 0 &&
-            focusedIndexForQuestion < options.length
-              ? focusedIndexForQuestion
-              : currentIndex >= 0
-                ? currentIndex
-                : 0;
-          const target = options[safeIndex];
-          if (!target) return;
-          if (currentValue === target.value) {
-            handleResponseChange(questionId, undefined);
-            updateFocus(safeIndex);
-            return;
-          }
-          setByIndex(safeIndex);
+        if (
+          handleSingleChoiceKeyboardNavigation(
+            event,
+            questionId,
+            options,
+            currentValue as string | undefined,
+            singleFocusIndex[questionId],
+            (qId: string, index: number) => {
+              setSingleFocusIndex((prev) => ({
+                ...prev,
+                [qId]: index,
+              }));
+            },
+            handleResponseChange,
+          )
+        ) {
           return;
         }
       }
 
       // Multi choice cards: arrows pick target option, Enter/Space toggle it
       if (questionType === "multi_choice" && options?.length) {
-        const config = (question.configJson ?? {}) as {
-          minSelections?: number;
-          maxSelections?: number;
-        };
-        const minSelections = config?.minSelections ?? 0;
-        const maxSelections = config?.maxSelections;
-        const currentSelections = Array.isArray(currentValue)
-          ? currentValue
-          : [];
-        const currentSet = new Set(currentSelections);
-        const storedFocus = multiFocusIndex[questionId];
-        const firstSelectedIndex = options.findIndex((option) =>
-          currentSet.has(option?.value ?? ""),
-        );
-        const fallbackIndex =
-          storedFocus !== undefined && storedFocus >= 0
-            ? storedFocus
-            : firstSelectedIndex >= 0
-              ? firstSelectedIndex
-              : 0;
-
-        const clampIndex = (idx: number) =>
-          Math.min(Math.max(idx, 0), options.length - 1);
-
-        const updateFocus = (idx: number) =>
-          setMultiFocusIndex((prev) => ({
-            ...prev,
-            [questionId]: clampIndex(idx),
-          }));
-
-        const toggleSelection = (targetIdx: number) => {
-          const option = options[targetIdx];
-          if (!option) return;
-          const nextSet = new Set(currentSet);
-
-          if (nextSet.has(option.value)) {
-            if (nextSet.size > minSelections) {
-              nextSet.delete(option.value);
-            }
-          } else if (!maxSelections || nextSet.size < maxSelections) {
-            nextSet.add(option.value);
-          }
-
-          handleResponseChange(questionId, Array.from(nextSet));
-          updateFocus(targetIdx);
-        };
-
-        if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-          event.preventDefault();
-          updateFocus(fallbackIndex + 1);
+        if (
+          handleMultiChoiceKeyboardNavigation(
+            event,
+            questionId,
+            (question.configJson ?? {}) as {
+              minSelections?: number;
+              maxSelections?: number;
+            },
+            options,
+            currentValue as string[] | undefined,
+            multiFocusIndex[questionId],
+            (qId: string, index: number) => {
+              setMultiFocusIndex((prev) => ({
+                ...prev,
+                [qId]: index,
+              }));
+            },
+            handleResponseChange,
+          )
+        ) {
           return;
         }
+      }
 
-        if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-          event.preventDefault();
-          updateFocus(fallbackIndex - 1);
-          return;
-        }
-
-        if (event.key === "Home") {
-          event.preventDefault();
-          updateFocus(0);
-          return;
-        }
-
-        if (event.key === "End") {
-          event.preventDefault();
-          updateFocus(options.length - 1);
-          return;
-        }
-
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          const targetIdx =
-            storedFocus !== undefined && storedFocus >= 0
-              ? clampIndex(storedFocus)
-              : clampIndex(fallbackIndex);
-          toggleSelection(targetIdx);
-          return;
-        }
+      // Text questions: use native textarea behavior
+      if (questionType === "text") {
+        handleTextKeyboardNavigation(event, questionId);
       }
     },
     [
