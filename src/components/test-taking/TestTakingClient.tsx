@@ -64,6 +64,7 @@ export function TestTakingClient({
   const questionCardRefs = React.useRef<Array<HTMLElement | null>>([]);
   const contentBoundsRef = React.useRef<HTMLDivElement | null>(null);
   const footerRef = React.useRef<HTMLDivElement | null>(null);
+  const lastCategoryIndexRef = React.useRef(currentCategoryIndex);
 
   const currentCategory = sections[currentCategoryIndex];
 
@@ -134,11 +135,19 @@ export function TestTakingClient({
   // Reset intra-card virtual focus when switching categories
   React.useEffect(() => {
     resetFocus();
-    const nextLength = sections[currentCategoryIndex]?.items.length ?? 0;
-    cardContentRefs.current = Array.from({ length: nextLength }, () => null);
-    questionCardRefs.current = Array.from({ length: nextLength }, () => null);
-    setActiveCardIndex(0);
-  }, [currentCategoryIndex, sections, resetFocus]);
+    const nextItems = sections[currentCategoryIndex]?.items ?? [];
+    cardContentRefs.current = Array.from({ length: nextItems.length }, () => null);
+    questionCardRefs.current = Array.from(
+      { length: nextItems.length },
+      () => null,
+    );
+
+    const firstUnansweredIndex = nextItems.findIndex(
+      (item) => responsesRef.current[item.question.id] === undefined,
+    );
+
+    setActiveCardIndex(firstUnansweredIndex >= 0 ? firstUnansweredIndex : 0);
+  }, [currentCategoryIndex, sections, resetFocus, responsesRef]);
   const currentCardCount = currentCategory?.items.length ?? 0;
   const isLastCategory = currentCategoryIndex === sections.length - 1;
   const allQuestionsAnsweredInCategory =
@@ -150,9 +159,9 @@ export function TestTakingClient({
   React.useEffect(() => {
     const scrollContainer = document.getElementById("main-scroll-container");
     if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, behavior: "instant" });
+      scrollContainer.scrollTo({ top: 0, behavior: "auto" });
     } else {
-      window.scrollTo({ top: 0, behavior: "instant" });
+      window.scrollTo({ top: 0, behavior: "auto" });
     }
   }, [currentCategoryIndex]);
 
@@ -223,7 +232,7 @@ export function TestTakingClient({
       cardContentEl.classList.add("focusable-question-card");
       return cardEl;
     });
-  }, [activeCardIndex, currentCategoryIndex, findQuestionCardElement]);
+  }, [currentCardCount, currentCategoryIndex, findQuestionCardElement]);
 
   const focusCardByIndex = React.useCallback(
     (index: number) => {
@@ -241,12 +250,22 @@ export function TestTakingClient({
 
   // Focus first card when category changes
   React.useEffect(() => {
+    const isNewCategory = lastCategoryIndexRef.current !== currentCategoryIndex;
+    lastCategoryIndexRef.current = currentCategoryIndex;
+    if (!isNewCategory) return;
+
     // Use requestAnimationFrame to ensure the DOM has updated and the new category is rendered
     let rafId: number;
+    const nextItems = sections[currentCategoryIndex]?.items ?? [];
+    const firstUnansweredIndex = nextItems.findIndex(
+      (item) => responsesRef.current[item.question.id] === undefined,
+    );
+    const targetIndex =
+      firstUnansweredIndex >= 0 ? firstUnansweredIndex : 0;
     const focusFirst = () => {
       // Check if the first card ref exists
-      if (cardContentRefs.current[0]) {
-        focusCardByIndex(0);
+      if (cardContentRefs.current[targetIndex]) {
+        focusCardByIndex(targetIndex);
       } else {
         // If not ready, try again next frame (up to a limit, but usually 1 frame is enough)
         rafId = requestAnimationFrame(focusFirst);
@@ -262,7 +281,7 @@ export function TestTakingClient({
       cancelAnimationFrame(rafId);
       clearTimeout(safetyTimer);
     };
-  }, [currentCategoryIndex, focusCardByIndex]);
+  }, [currentCategoryIndex, focusCardByIndex, sections]);
 
   const handleCardContentClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>, cardIndex: number) => {
