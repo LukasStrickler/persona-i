@@ -113,10 +113,10 @@ if [ -z "$BETTER_AUTH_SECRET" ] || [ "$BETTER_AUTH_SECRET" = "" ]; then
     # Replace existing (possibly empty) value
     if [[ "$OSTYPE" == "darwin"* ]]; then
       # macOS
-      sed -i '' "s|^[[:space:]]*BETTER_AUTH_SECRET[[:space:]]*=.*|BETTER_AUTH_SECRET=${NEW_SECRET}|" .env
+      sed -i '' "s#^[[:space:]]*BETTER_AUTH_SECRET[[:space:]]*=.*#BETTER_AUTH_SECRET=${NEW_SECRET}#" .env
     else
       # Linux
-      sed -i "s|^[[:space:]]*BETTER_AUTH_SECRET[[:space:]]*=.*|BETTER_AUTH_SECRET=${NEW_SECRET}|" .env
+      sed -i "s#^[[:space:]]*BETTER_AUTH_SECRET[[:space:]]*=.*#BETTER_AUTH_SECRET=${NEW_SECRET}#" .env
     fi
   else
     # Add new line

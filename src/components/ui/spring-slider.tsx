@@ -169,7 +169,7 @@ export function SpringSlider({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
 
-    let newValue = value;
+    let newValue: number;
     const range = max - min;
     const pageStep = Math.max(step, range / 10);
 

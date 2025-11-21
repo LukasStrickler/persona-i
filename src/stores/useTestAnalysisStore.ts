@@ -524,10 +524,9 @@ function createStore(slug: string) {
                   : undefined;
 
                 const processedResponses = new Map<string, ProcessedResponse>();
-                const { questions } = get();
 
                 for (const response of responses) {
-                  const question = questions.get(response.questionId);
+                  const question = state.questions.get(response.questionId);
                   if (!question) continue;
 
                   // Create option value map for option-type responses

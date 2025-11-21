@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { z } from "zod";
 import { SingleChoiceQuestion } from "./SingleChoiceQuestion";
 import { ScalarQuestion } from "./ScalarQuestion";
 import { BooleanQuestion } from "./BooleanQuestion";
@@ -15,6 +16,51 @@ import {
   type TextConfig,
   type MultiChoiceConfig,
 } from "@/lib/types/question-types";
+
+// Zod schemas for runtime validation
+const SingleChoiceConfigSchema = z.object({
+  options: z.array(
+    z.object({
+      label: z.string(),
+      value: z.string(),
+    }),
+  ),
+});
+
+const MultiChoiceConfigSchema = z.object({
+  options: z.array(
+    z.object({
+      label: z.string(),
+      value: z.string(),
+    }),
+  ),
+  minSelections: z.number().optional(),
+  maxSelections: z.number().optional(),
+});
+
+const ScalarConfigSchema = z.object({
+  min: z.number(),
+  max: z.number(),
+  step: z.number().optional(),
+  labels: z
+    .object({
+      min: z.string(),
+      max: z.string(),
+    })
+    .optional(),
+});
+
+const BooleanConfigSchema = z.object({
+  trueLabel: z.string().optional(),
+  falseLabel: z.string().optional(),
+});
+
+const TextConfigSchema = z.object({
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  placeholder: z.string().optional(),
+  multiline: z.boolean().optional(),
+});
 
 export interface Question {
   id: string;
@@ -62,15 +108,25 @@ export function QuestionRenderer({
   // Parse config based on type
   const config = question.configJson;
 
-  // Render appropriate component
+  // Render appropriate component with runtime validation
   switch (typeCode) {
-    case QuestionTypeCode.SINGLE_CHOICE:
+    case QuestionTypeCode.SINGLE_CHOICE: {
+      const parseResult = SingleChoiceConfigSchema.safeParse(config);
+      if (!parseResult.success) {
+        return (
+          <div className="border-destructive rounded-md border p-4">
+            <p className="text-destructive">
+              Invalid question configuration: {parseResult.error.message}
+            </p>
+          </div>
+        );
+      }
       return (
         <SingleChoiceQuestion
           question={{
             id: question.id,
             prompt: question.prompt,
-            config: config as SingleChoiceConfig,
+            config: parseResult.data as SingleChoiceConfig,
           }}
           value={value as string | undefined}
           onChange={(val) => onChange(val)}
@@ -78,14 +134,25 @@ export function QuestionRenderer({
           questionNumber={questionNumber}
         />
       );
+    }
 
-    case QuestionTypeCode.SCALAR:
+    case QuestionTypeCode.SCALAR: {
+      const parseResult = ScalarConfigSchema.safeParse(config);
+      if (!parseResult.success) {
+        return (
+          <div className="border-destructive rounded-md border p-4">
+            <p className="text-destructive">
+              Invalid question configuration: {parseResult.error.message}
+            </p>
+          </div>
+        );
+      }
       return (
         <ScalarQuestion
           question={{
             id: question.id,
             prompt: question.prompt,
-            config: config as ScalarConfig,
+            config: parseResult.data as ScalarConfig,
           }}
           value={value as number | undefined}
           onChange={(val) => onChange(val)}
@@ -93,14 +160,25 @@ export function QuestionRenderer({
           questionNumber={questionNumber}
         />
       );
+    }
 
-    case QuestionTypeCode.BOOLEAN:
+    case QuestionTypeCode.BOOLEAN: {
+      const parseResult = BooleanConfigSchema.safeParse(config);
+      if (!parseResult.success) {
+        return (
+          <div className="border-destructive rounded-md border p-4">
+            <p className="text-destructive">
+              Invalid question configuration: {parseResult.error.message}
+            </p>
+          </div>
+        );
+      }
       return (
         <BooleanQuestion
           question={{
             id: question.id,
             prompt: question.prompt,
-            config: config as BooleanConfig,
+            config: parseResult.data as BooleanConfig,
           }}
           value={value as boolean | undefined}
           onChange={(val) => onChange(val)}
@@ -108,14 +186,25 @@ export function QuestionRenderer({
           questionNumber={questionNumber}
         />
       );
+    }
 
-    case QuestionTypeCode.TEXT:
+    case QuestionTypeCode.TEXT: {
+      const parseResult = TextConfigSchema.safeParse(config);
+      if (!parseResult.success) {
+        return (
+          <div className="border-destructive rounded-md border p-4">
+            <p className="text-destructive">
+              Invalid question configuration: {parseResult.error.message}
+            </p>
+          </div>
+        );
+      }
       return (
         <TextQuestion
           question={{
             id: question.id,
             prompt: question.prompt,
-            config: config as TextConfig,
+            config: parseResult.data as TextConfig,
           }}
           value={value as string | undefined}
           onChange={(val) => onChange(val)}
@@ -123,14 +212,25 @@ export function QuestionRenderer({
           questionNumber={questionNumber}
         />
       );
+    }
 
-    case QuestionTypeCode.MULTI_CHOICE:
+    case QuestionTypeCode.MULTI_CHOICE: {
+      const parseResult = MultiChoiceConfigSchema.safeParse(config);
+      if (!parseResult.success) {
+        return (
+          <div className="border-destructive rounded-md border p-4">
+            <p className="text-destructive">
+              Invalid question configuration: {parseResult.error.message}
+            </p>
+          </div>
+        );
+      }
       return (
         <MultiChoiceQuestion
           question={{
             id: question.id,
             prompt: question.prompt,
-            config: config as MultiChoiceConfig,
+            config: parseResult.data as MultiChoiceConfig,
           }}
           value={value as string[] | undefined}
           onChange={(val) => onChange(val)}
@@ -140,6 +240,7 @@ export function QuestionRenderer({
           onFocusIndexChange={onMultiChoiceFocusIndexChange}
         />
       );
+    }
 
     default:
       return (

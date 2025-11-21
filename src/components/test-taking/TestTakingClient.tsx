@@ -77,7 +77,6 @@ export function TestTakingClient({
   const {
     singleFocusIndex,
     multiFocusIndex,
-    setSingleFocusIndex,
     setMultiFocusIndex,
     updateSingleFocus,
     updateMultiFocus,
@@ -87,11 +86,10 @@ export function TestTakingClient({
     responses,
   });
 
-  const { saveResponseHandler, debouncedSave, flushDebounced } =
-    useSaveResponse({
-      sessionData,
-      sessionId,
-    });
+  const { debouncedSave, flushDebounced } = useSaveResponse({
+    sessionData,
+    sessionId,
+  });
 
   const { handleComplete, isCompleting } = useTestCompletion({
     sessionId,
@@ -186,18 +184,24 @@ export function TestTakingClient({
       const blob = new Blob([body], { type: "application/json" });
       const url = `/api/save-responses-batch`;
 
-      // Fallback to fetch with keepalive if sendBeacon fails
-      if (!navigator.sendBeacon(url, blob)) {
-        // Fallback to fetch with keepalive (less reliable but better than nothing)
-        fetch(url, {
-          method: "POST",
-          body,
-          headers: { "Content-Type": "application/json" },
-          keepalive: true,
-        }).catch(() => {
-          // Silently fail - this is best effort only
-        });
+      // Fallback to fetch with keepalive if sendBeacon is unavailable or fails
+      if (
+        typeof navigator.sendBeacon === "function" &&
+        navigator.sendBeacon(url, blob)
+      ) {
+        // sendBeacon succeeded
+        return;
       }
+
+      // Fallback to fetch with keepalive (less reliable but better than nothing)
+      fetch(url, {
+        method: "POST",
+        body,
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+      }).catch(() => {
+        // Silently fail - this is best effort only
+      });
     };
 
     window.addEventListener("beforeunload", handler);
@@ -480,27 +484,7 @@ export function TestTakingClient({
     ],
   );
 
-  // Check for valid category after all hooks are called (Rules of Hooks)
-  if (!currentCategory) {
-    return <div>No categories found</div>;
-  }
-
-  // Calculate progress
-  const totalQuestions = sessionData.items.length;
-  const answeredCount = Object.keys(responses).length;
-  const overallProgress =
-    totalQuestions === 0 ? 0 : (answeredCount / totalQuestions) * 100;
-
-  // Check if all required questions in current category are answered
-  const requiredQuestionsInCategory = currentCategory.items.filter(
-    (item) => item.isRequired !== false,
-  );
-  const requiredAnsweredCount = requiredQuestionsInCategory.filter(
-    (item) => responses[item.question.id] !== undefined,
-  ).length;
-  const canProceedToNext =
-    requiredAnsweredCount === requiredQuestionsInCategory.length;
-
+  // Hooks must be called before any early returns (Rules of Hooks)
   React.useLayoutEffect(() => {
     // Ensure focus is placed immediately on category change; retry across paints until refs exist
     let rafId = 0;
@@ -559,6 +543,27 @@ export function TestTakingClient({
       }),
     );
   }, [activeCardIndex, currentCategory, currentCategoryIndex]);
+
+  // Check for valid category after all hooks are called (Rules of Hooks)
+  if (!currentCategory) {
+    return <div>No categories found</div>;
+  }
+
+  // Calculate progress
+  const totalQuestions = sessionData.items.length;
+  const answeredCount = Object.keys(responses).length;
+  const overallProgress =
+    totalQuestions === 0 ? 0 : (answeredCount / totalQuestions) * 100;
+
+  // Check if all required questions in current category are answered
+  const requiredQuestionsInCategory = currentCategory.items.filter(
+    (item) => item.isRequired !== false,
+  );
+  const requiredAnsweredCount = requiredQuestionsInCategory.filter(
+    (item) => responses[item.question.id] !== undefined,
+  ).length;
+  const canProceedToNext =
+    requiredAnsweredCount === requiredQuestionsInCategory.length;
 
   const handleNextCategory = () => {
     if (currentCategoryIndex < sections.length - 1) {

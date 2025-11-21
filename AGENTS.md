@@ -119,9 +119,9 @@ When behavior, data, or flows change in a meaningful way:
 - Structure tests so they can run under the existing Vitest configuration.
 - After adding tests, re-run `bun run agent:finalize`.
 
-## 6. Do / Don’t
+## 6. Do / Don't
 
-**Do**
+### Do
 
 - Use existing patterns and docs as the starting point.
 - Keep questionnaire flows accessible (keyboard and screen-reader friendly).
@@ -129,7 +129,7 @@ When behavior, data, or flows change in a meaningful way:
 - Keep changes as small and focused as possible.
 - Think from the perspective of a user taking a test or comparing models.
 
-**Don’t**
+### Don't
 
 - Don’t skip `bun run agent:finalize` before you consider a task finished.
 - Don’t introduce new dependencies without a strong reason.

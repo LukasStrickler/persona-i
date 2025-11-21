@@ -106,7 +106,11 @@ export const questionnairesRouter = createTRPCRouter({
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
       const q = await ctx.db.query.questionnaire.findFirst({
-        where: eq(questionnaire.slug, input.slug),
+        where: and(
+          eq(questionnaire.slug, input.slug),
+          eq(questionnaire.isPublic, true),
+          eq(questionnaire.status, "active"),
+        ),
       });
 
       if (!q) {
@@ -249,7 +253,13 @@ export const questionnairesRouter = createTRPCRouter({
             eq(questionnaireVersion.isActive, true),
           ),
         )
-        .where(eq(questionnaire.slug, input.slug))
+        .where(
+          and(
+            eq(questionnaire.slug, input.slug),
+            eq(questionnaire.isPublic, true),
+            eq(questionnaire.status, "active"),
+          ),
+        )
         .orderBy(desc(questionnaireVersion.version))
         .limit(1);
 

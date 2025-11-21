@@ -79,12 +79,12 @@ export function ScalarQuestion({
     }
   }, [value, isDragging]);
 
-  const handleValueChange = (newValues: number[]) => {
-    setLocalValue(newValues[0] ?? min);
+  const handleValueChange = (newValue: number) => {
+    setLocalValue(newValue);
   };
 
-  const handleValueCommit = (newValues: number[]) => {
-    const rawValue = newValues[0] ?? min;
+  const handleValueCommit = (newValue: number) => {
+    const rawValue = newValue;
     // Snap to the nearest step
     const snappedValue = Math.round((rawValue - min) / step) * step + min;
     // Clamp to ensure within bounds (though slider handles this mostly)
@@ -111,9 +111,9 @@ export function ScalarQuestion({
             onPointerDown={() => setIsDragging(true)}
             onValueChange={(val) => {
               setIsDragging(true);
-              handleValueChange([val]);
+              handleValueChange(val);
             }}
-            onValueCommit={(val) => handleValueCommit([val])}
+            onValueCommit={(val) => handleValueCommit(val)}
             min={min}
             max={max}
             step={step}
