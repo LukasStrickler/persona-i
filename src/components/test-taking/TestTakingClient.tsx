@@ -143,8 +143,97 @@ export function TestTakingClient({
   >({});
   const cardContentRefs = React.useRef<Array<HTMLDivElement | null>>([]);
   const questionCardRefs = React.useRef<Array<HTMLElement | null>>([]);
+  const contentBoundsRef = React.useRef<HTMLDivElement | null>(null);
+  const footerRef = React.useRef<HTMLDivElement | null>(null);
 
   const saveResponse = api.questionnaires.saveResponse.useMutation();
+
+  // Scroll a card into view with a predictable center alignment, clamped so we never overshoot past the footer.
+  const scrollCardIntoView = React.useCallback(
+    (
+      el: HTMLElement,
+      {
+        behavior = "smooth",
+        force = false,
+      }: { behavior?: ScrollBehavior; force?: boolean } = {},
+    ) => {
+      const container = document.getElementById("main-scroll-container");
+      const topOffset = 175; // keep content below header + fade
+      const bottomOffset = (footerRef.current?.offsetHeight ?? 0) + 24; // keep content above sticky footer
+
+      const currentScroll = container?.scrollTop ?? window.scrollY;
+      const clientHeight = container?.clientHeight ?? window.innerHeight;
+      const scrollHeight =
+        container?.scrollHeight ?? document.documentElement.scrollHeight;
+      const scrollNode = container ?? document.documentElement;
+      const isWindowFallback = !container;
+
+      const containerRect = container
+        ? container.getBoundingClientRect()
+        : {
+            top: 0,
+            left: 0,
+            height: window.innerHeight,
+            width: window.innerWidth,
+          };
+
+      // Bounds of the list of cards (per category), relative to container scroll space.
+      const contentRect = contentBoundsRef.current?.getBoundingClientRect();
+      const contentTop = contentRect
+        ? contentRect.top - containerRect.top + currentScroll
+        : 0;
+      const contentBottom = contentRect
+        ? contentRect.bottom - containerRect.top + currentScroll
+        : scrollHeight;
+
+      const elRect = el.getBoundingClientRect();
+
+      const elementTop = elRect.top - containerRect.top + currentScroll;
+      const elementHeight = elRect.height;
+      const elementBottom = elementTop + elementHeight;
+
+      const safeTop = topOffset;
+      const safeBottom = Math.max(0, clientHeight - bottomOffset);
+      const safeHeight = Math.max(1, safeBottom - safeTop);
+      const elementCenter = elementTop + elementHeight / 2;
+
+      // Ideal: center element within the safe viewport.
+      const idealScroll = elementCenter - (safeTop + safeHeight / 2);
+
+      // Visible range to keep the element fully on screen.
+      const minScrollToSeeBottom = elementBottom - safeBottom; // lower bound
+      const maxScrollToSeeTop = elementTop - safeTop; // upper bound
+
+      const clampedToElement =
+        minScrollToSeeBottom > maxScrollToSeeTop
+          ? (minScrollToSeeBottom + maxScrollToSeeTop) / 2
+          : Math.min(
+              Math.max(idealScroll, minScrollToSeeBottom),
+              maxScrollToSeeTop,
+            );
+
+      // Clamp to content bounds so we don't scroll past the questionnaire list.
+      const minByContent = Math.max(0, contentTop - safeTop);
+      const maxByContent = Math.max(0, contentBottom - safeBottom);
+
+      // Clamp to scrollable bounds.
+      const maxScroll = Math.max(0, scrollHeight - clientHeight);
+      const target = Math.min(
+        Math.max(clampedToElement, minByContent),
+        Math.min(maxByContent, maxScroll),
+      );
+
+      // Skip tiny nudges when we're already essentially at target.
+      if (!force && Math.abs(target - currentScroll) <= 2) return;
+
+      if (isWindowFallback) {
+        window.scrollTo({ top: target, behavior });
+      } else {
+        scrollNode.scrollTo({ top: target, behavior });
+      }
+    },
+    [],
+  );
 
   const saveResponseHandler = React.useCallback(
     async (
@@ -176,7 +265,7 @@ export function TestTakingClient({
               })
               .filter((id): id is string => id !== undefined),
           });
-        } catch (error) {
+        } catch (error: unknown) {
           console.error("Failed to save response:", error);
         }
         return;
@@ -213,7 +302,7 @@ export function TestTakingClient({
           value: normalizedValue,
           selectedOptionId: optionId,
         });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to save response:", error);
       }
     },
@@ -426,8 +515,8 @@ export function TestTakingClient({
 
     cardContent.tabIndex = 0;
     cardContent.focus({ preventScroll: true });
-    cardContent.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, []);
+    scrollCardIntoView(cardContent, { behavior: "smooth", force: true });
+  }, [scrollCardIntoView]);
 
   // Focus first card when category changes
   React.useEffect(() => {
@@ -484,7 +573,6 @@ export function TestTakingClient({
       if (document.activeElement !== focusTarget) {
         focusTarget.focus({ preventScroll: true });
         setActiveCardIndex(cardIndex);
-        questionCard.scrollIntoView({ block: "center", behavior: "smooth" });
       }
     },
     [findQuestionCardElement],
@@ -952,6 +1040,7 @@ export function TestTakingClient({
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="transform-gpu space-y-4 pt-0 will-change-transform"
+            ref={contentBoundsRef}
           >
             {currentCategory.items.map((item, index) => (
               <motion.div
@@ -1017,7 +1106,11 @@ export function TestTakingClient({
       </div>
 
       {/* Navigation Footer */}
-      <div className="border-border/40 bg-background/80 sticky bottom-0 z-30 mt-auto border-t py-4 backdrop-blur-xl">
+      <div
+        className="border-border/40 bg-background/80 sticky bottom-0 z-30 mt-auto border-t py-4 backdrop-blur-xl"
+        data-nav-footer
+        ref={footerRef}
+      >
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 sm:px-8">
           <Button
             variant="ghost"
