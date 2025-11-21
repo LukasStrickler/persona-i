@@ -29,7 +29,7 @@ export function SingleChoiceQuestion({
       <div
         role="radiogroup"
         aria-label={question.prompt}
-        className="grid gap-2 outline-none"
+        className="question-card-focus-gradient grid gap-2 p-1 outline-none"
         tabIndex={-1} // CardContent stays the single tab stop; we handle keyboard at the card level
       >
         {question.config.options.map((option, _optionIndex) => {

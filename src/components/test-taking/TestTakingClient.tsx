@@ -507,16 +507,19 @@ export function TestTakingClient({
     });
   }, [activeCardIndex, currentCategoryIndex, findQuestionCardElement]);
 
-  const focusCardByIndex = React.useCallback((index: number) => {
-    const cardContent = cardContentRefs.current[index];
-    if (!cardContent) return;
+  const focusCardByIndex = React.useCallback(
+    (index: number) => {
+      const cardContent = cardContentRefs.current[index];
+      if (!cardContent) return;
 
-    setActiveCardIndex(index);
+      setActiveCardIndex(index);
 
-    cardContent.tabIndex = 0;
-    cardContent.focus({ preventScroll: true });
-    scrollCardIntoView(cardContent, { behavior: "smooth", force: true });
-  }, [scrollCardIntoView]);
+      cardContent.tabIndex = 0;
+      cardContent.focus({ preventScroll: true });
+      scrollCardIntoView(cardContent, { behavior: "smooth", force: true });
+    },
+    [scrollCardIntoView],
+  );
 
   // Focus first card when category changes
   React.useEffect(() => {
@@ -970,9 +973,9 @@ export function TestTakingClient({
     <div className="flex min-h-screen flex-col">
       {/* Fixed Header - Solid & Clean */}
       <div className="bg-background fixed top-[64px] right-0 left-0 z-40 shadow-sm">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-10 max-w-3xl items-center justify-between gap-4 px-4 pt-2 sm:px-6 lg:px-8">
           {/* Left: Title & Category */}
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3 pb-2 sm:pb-0">
             <h1 className="text-foreground truncate text-base font-semibold tracking-tight sm:text-xl">
               {sessionData.questionnaire.title}
             </h1>
@@ -1017,9 +1020,9 @@ export function TestTakingClient({
         </div>
 
         {/* Mobile Progress Bar (Bottom Edge) */}
-        <div className="bg-secondary/30 absolute right-0 bottom-0 left-0 h-1 sm:hidden">
+        <div className="bg-secondary/30 absolute right-0 bottom-0 left-0 mx-auto h-1 w-[calc(100%-24px)] rounded-full sm:hidden">
           <motion.div
-            className="bg-primary h-full"
+            className="bg-primary h-full rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${overallProgress}%` }}
             transition={{ duration: 0.5, ease: "circOut" }}
@@ -1027,11 +1030,11 @@ export function TestTakingClient({
         </div>
 
         {/* Gradient Mask for Soft Edge Scrolling - Attached to header bottom */}
-        <div className="from-background pointer-events-none absolute top-full right-0 left-0 h-18 bg-gradient-to-b to-transparent" />
+        <div className="from-background pointer-events-none absolute top-full right-0 left-0 h-12 bg-gradient-to-b to-transparent" />
       </div>
 
       {/* Main Content Area */}
-      <div className="mx-auto mt-[120px] w-full max-w-3xl flex-1 space-y-4 px-4 py-6 sm:mt-32 sm:px-0">
+      <div className="mx-auto mt-[100px] w-full max-w-3xl flex-1 space-y-4 px-4 py-6 sm:mt-22 sm:px-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentCategoryIndex}

@@ -210,16 +210,16 @@ export function SpringSlider({
   return (
     <div
       className={cn(
-        "relative flex h-4 w-full touch-none items-center select-none",
+        "relative flex h-4 w-full touch-none items-center select-none before:absolute before:-top-2 before:right-0 before:-bottom-2 before:left-0 before:z-0 before:content-['']",
         disabled && "pointer-events-none opacity-50",
         className,
       )}
+      onPointerDown={handleTrackClick}
     >
       {/* Track */}
       <div
         ref={trackRef}
-        className="bg-secondary/50 relative h-1.5 w-full grow cursor-pointer overflow-hidden rounded-full"
-        onPointerDown={handleTrackClick}
+        className="bg-secondary/50 relative z-10 h-1.5 w-full grow cursor-pointer overflow-hidden rounded-full"
       >
         {/* Fill */}
         <motion.div
@@ -230,7 +230,7 @@ export function SpringSlider({
 
       {/* Thumb */}
       <motion.div
-        className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
+        className="absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
         style={{ x }}
         drag="x"
         dragConstraints={trackRef}

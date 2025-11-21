@@ -148,7 +148,7 @@ export function MultiChoiceQuestion({
         )}
 
         <div
-          className="grid gap-2 outline-none"
+          className="question-card-focus-gradient grid gap-2 p-1 outline-none"
           tabIndex={disabled ? -1 : 0}
           onKeyDown={handleKeyDown}
           onBlur={() => setFocusIndex(-1)}

@@ -48,7 +48,7 @@ export default async function TestTakingPage({
     <>
       <MainHeader />
       <MainHeaderContentWrapper>
-        <main className="mx-auto max-w-4xl px-4 pt-0 pb-16 sm:pb-24">
+        <main className="mx-auto max-w-4xl px-4 pt-0 pb-8">
           <TestTakingClient
             sessionData={sessionData}
             sessionId={sessionId}

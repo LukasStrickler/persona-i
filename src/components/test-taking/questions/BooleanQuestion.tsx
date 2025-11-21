@@ -60,7 +60,7 @@ export function BooleanQuestion({
       <div
         role="radiogroup"
         aria-label={question.prompt}
-        className="grid grid-cols-2 gap-2 outline-none"
+        className="question-card-focus-gradient grid grid-cols-2 gap-2 p-1 outline-none"
         tabIndex={disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
       >
