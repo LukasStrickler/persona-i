@@ -155,11 +155,11 @@ jobs:
         if: success() && steps.coverage.outcome == 'success'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: unit-test-coverage
+          header: unit-test-coverage-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           message: |
             ## 🧪 Unit Test Coverage
             
-            ${{ github.event_name == 'pull_request' && format('Commit: `{0}`', github.event.pull_request.head.sha) || format('Commit: `{0}`', github.sha) }}
+            Commit: `${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}`
             
             ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
         env:
@@ -244,11 +244,11 @@ jobs:
         if: success() && steps.coverage.outcome == 'success'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: integration-test-coverage
+          header: integration-test-coverage-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           message: |
             ## 🔗 Integration Test Coverage
             
-            ${{ github.event_name == 'pull_request' && format('Commit: `{0}`', github.event.pull_request.head.sha) || format('Commit: `{0}`', github.sha) }}
+            Commit: `${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}`
             
             ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
         env:

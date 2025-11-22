@@ -98,7 +98,7 @@ COVERAGE_TABLE=$(cat "$COVERAGE_FILE" | jq -r '
       }
     }) | sort_by(.dir))
   } |
-  # Generate markdown table
+  # Generate markdown table with indentation indicators
   "| File | % Stmts | % Branch | % Funcs | % Lines |\n" +
   "|------|---------|----------|----------|--------|\n" +
   "| **All files** | " + 
@@ -107,13 +107,13 @@ COVERAGE_TABLE=$(cat "$COVERAGE_FILE" | jq -r '
     (calc_pct(.totals.functions.covered; .totals.functions.total) | tostring) + "% | " +
     (calc_pct(.totals.lines.covered; .totals.lines.total) | tostring) + "% |\n" +
   ([.directories[] | 
-    "| " + .dir_display + " | " +
+    "| <u>" + .dir_display + "</u> | " +
     (calc_pct(.totals.statements.covered; .totals.statements.total) | tostring) + "% | " +
     (calc_pct(.totals.branches.covered; .totals.branches.total) | tostring) + "% | " +
     (calc_pct(.totals.functions.covered; .totals.functions.total) | tostring) + "% | " +
     (calc_pct(.totals.lines.covered; .totals.lines.total) | tostring) + "% |\n" +
     ([.files[] | 
-      "| " + ("  " + .filename) + " | " +
+      "| " + .filename + " | " +
       (calc_pct(.statements.covered; .statements.total) | tostring) + "% | " +
       (calc_pct(.branches.covered; .branches.total) | tostring) + "% | " +
       (calc_pct(.functions.covered; .functions.total) | tostring) + "% | " +
