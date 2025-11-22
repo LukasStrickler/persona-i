@@ -49,22 +49,23 @@ bun run test:storybook    # Run automated interaction tests for stories
 
 ### Environments
 
-| Test Type       | Environment | Description                                                                    |
-| :-------------- | :---------- | :----------------------------------------------------------------------------- |
-| **Unit**        | `node`      | Runs in a server-like environment for pure logic and isolated component tests. |
-| **Integration** | `node`      | Runs in a server-like environment for DB and API testing.                      |
-| **E2E**         | `browser`   | Runs in actual browsers (Chromium, Firefox, WebKit) via Playwright.            |
+| Test Type       | Environment | Description                                                                |
+| :-------------- | :---------- | :------------------------------------------------------------------------- |
+| **Unit**        | `jsdom`     | Runs in a browser-like environment (jsdom) for React components and hooks. |
+| **Integration** | `node`      | Runs in a server-like environment for DB and API testing.                  |
+| **E2E**         | `browser`   | Runs in actual browsers (Chromium, Firefox, WebKit) via Playwright.        |
 
 ### Database Isolation
 
 The testing infrastructure is designed for **parallel execution** and **strict isolation**:
 
-1.  **In-Memory SQLite**: By default, tests use an in-memory SQLite database (`file::memory:`).
-2.  **Fresh State**: Each test context initializes a fresh database instance.
-3.  **Auto-Migration**: The schema is automatically pushed to the in-memory database before tests run.
+1.  **In-Memory SQLite**: By default, tests use an in-memory SQLite database (`:memory:`).
+2.  **Fresh Database Per Test**: Each test gets a completely fresh database instance with migrations already applied.
+3.  **Auto-Migration**: The schema is automatically applied when creating the test database.
+4.  **Complete Isolation**: Each test runs in its own isolated database, ensuring no cross-test contamination.
 
 > [!IMPORTANT]
-> We do **not** use `cache=shared` to ensure that parallel tests do not interfere with each other's database state. Each test gets its own isolated sandbox.
+> We use `:memory:` (not `file::memory:`) for proper isolation. Each call to `createTestDatabase()` creates a new, isolated in-memory database. Tests use `beforeEach` to create a fresh database for each test, ensuring complete isolation.
 
 To debug with a persistent file-based database (forcing sequential execution), set the environment variable:
 `TEST_DATABASE_URL="file:./debug.db" bun run test:integration`
@@ -114,6 +115,8 @@ src/
 
 Focus on individual functions, hooks, or components in isolation. Mock external dependencies.
 
+**Environment**: Unit tests run in `jsdom` environment, providing DOM APIs for React component and hook testing.
+
 ```typescript
 // src/utils/__tests__/cn.unit.test.ts
 import { describe, expect, it } from "vitest";
@@ -126,24 +129,43 @@ describe("cn utility", () => {
 });
 ```
 
+For React hooks and components, use `@testing-library/react`:
+
+```typescript
+// src/hooks/__tests__/useSaveResponse.unit.test.ts
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { useSaveResponse } from "../useSaveResponse";
+
+describe("useSaveResponse", () => {
+  // Mock dependencies...
+  it("should save response", async () => {
+    const { result } = renderHook(() => useSaveResponse({ ... }));
+    // Test implementation...
+  });
+});
+```
+
 ### 2. Integration Tests
 
 Verify that different parts of the system work together, typically involving the database.
 
+**Key Pattern**: Each test gets a fresh database with migrations already applied. Use `beforeEach` to create the database.
+
 ```typescript
 // src/server/api/routers/__tests__/post.integration.test.ts
-import { describe, expect, it, beforeAll, afterAll, beforeEach } from "vitest";
-import { getTestDb } from "@/test-utils/db";
-import { setupTestDb, teardownTestDb } from "@/test-utils/db-setup";
+import { describe, expect, it, beforeEach } from "vitest";
+import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
 import { posts } from "@/server/db/schema";
-import { sql } from "drizzle-orm";
 
 describe("Post Database Operations", () => {
-  const db = getTestDb();
+  let db: TestDatabase;
 
-  beforeAll(async () => await setupTestDb());
-  afterAll(async () => await teardownTestDb());
-  beforeEach(async () => await db.run(sql`DELETE FROM ${posts}`));
+  beforeEach(async () => {
+    // Create a fresh database for each test (matches Eilbote-Website pattern)
+    // Migrations are automatically applied
+    db = await createTestDatabase();
+  });
 
   it("should create a post", async () => {
     const result = await db
@@ -154,6 +176,13 @@ describe("Post Database Operations", () => {
   });
 });
 ```
+
+**Important Notes:**
+
+- Use `createTestDatabase()` in `beforeEach` - this creates a fresh database with migrations applied
+- No need for `setupTestDb()` or `teardownTestDb()` - migrations are handled automatically
+- No need for `clearTestDb()` - each test gets a fresh database
+- The database is automatically cleaned up when the test completes
 
 ### 3. E2E Tests
 
@@ -230,15 +259,16 @@ export const Destructive: Story = {
 
 ## Troubleshooting
 
-| Problem                                  | Solution                                                                                                         |
-| :--------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| **"Table does not exist"**               | Ensure you are calling `setupTestDb()` in the `beforeAll` hook of your integration tests.                        |
-| **Tests running sequentially**           | Check if `TEST_DATABASE_URL` is set in your environment. Unset it to return to parallel in-memory mode.          |
-| **Story not appearing**                  | Verify the file ends in `.stories.tsx` and is located within `src/`. Check the browser console for build errors. |
-| **E2E test fails - connection refused**  | The webServer config should start automatically. Check that port 5001 is available and not blocked               |
-| **E2E test timeout**                     | Increase timeout in test, check server logs, ensure server started successfully                                  |
-| **E2E test can't find element**          | Add `waitForLoadState("networkidle")` before assertions, use proper selectors                                    |
-| **Port already in use (isolated tests)** | The script automatically finds available ports, but if issues persist, check for zombie processes                |
+| Problem                                  | Solution                                                                                                                                                                       |
+| :--------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **"Table does not exist"**               | Ensure you are calling `createTestDatabase()` in the `beforeEach` hook of your integration tests. The database is created fresh for each test with migrations already applied. |
+| **Tests running sequentially**           | Check if `TEST_DATABASE_URL` is set in your environment. Unset it to return to parallel in-memory mode.                                                                        |
+| **Foreign key constraint errors**        | Ensure all required foreign key dependencies are created before use (e.g., create `questionType` before `questionBankItem`, create `user` before `userQuestionnaireAccess`).   |
+| **Story not appearing**                  | Verify the file ends in `.stories.tsx` and is located within `src/`. Check the browser console for build errors.                                                               |
+| **E2E test fails - connection refused**  | The webServer config should start automatically. Check that port 5001 is available and not blocked                                                                             |
+| **E2E test timeout**                     | Increase timeout in test, check server logs, ensure server started successfully                                                                                                |
+| **E2E test can't find element**          | Add `waitForLoadState("networkidle")` before assertions, use proper selectors                                                                                                  |
+| **Port already in use (isolated tests)** | The script automatically finds available ports, but if issues persist, check for zombie processes                                                                              |
 
 ## Further Reading
 

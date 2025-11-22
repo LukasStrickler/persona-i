@@ -1,11 +1,20 @@
 /**
  * Unified database configuration for tests.
  * Automatically detects database type and determines parallel execution capability.
+ *
+ * Database Isolation Pattern:
+ * - Uses `:memory:` (not `file::memory:`) for proper isolation
+ * - Each call to `createTestDatabase()` creates a new, isolated in-memory database
+ * - Tests use `beforeEach` to create a fresh database for each test
+ * - Migrations are automatically applied when creating the database
+ * - No manual cleanup needed - each test gets a completely fresh database
  */
 
 /**
  * Gets the test database URL.
  * Defaults to in-memory SQLite if TEST_DATABASE_URL is not set.
+ *
+ * @returns Database URL string. Defaults to `:memory:` for proper isolation.
  */
 export function getTestDatabaseUrl(): string {
   // Check if TEST_DATABASE_URL is explicitly set
@@ -15,7 +24,9 @@ export function getTestDatabaseUrl(): string {
   }
 
   // Default to isolated in-memory SQLite (enables parallel test execution)
-  return "file::memory:";
+  // Use ":memory:" for proper isolation (matches Eilbote-Website pattern)
+  // Each connection gets its own isolated database instance
+  return ":memory:";
 }
 
 /**
@@ -31,11 +42,7 @@ export function getTestDatabaseToken(): string {
  * Checks if the database URL is an in-memory database.
  */
 export function isInMemoryDb(url: string): boolean {
-  return (
-    url === ":memory:" ||
-    url.includes(":memory:") ||
-    url.includes("file::memory:")
-  );
+  return url === ":memory:" || url.includes(":memory:");
 }
 
 /**

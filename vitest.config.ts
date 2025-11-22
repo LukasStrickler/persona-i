@@ -78,8 +78,8 @@ export default defineConfig({
         },
         test: {
           name: "unit",
-          include: ["**/__tests__/**/*.unit.test.ts"],
-          environment: "node", // Use node for now, add jsdom later if needed for React components
+          include: ["**/__tests__/**/*.unit.test.{ts,tsx}"],
+          environment: "jsdom", // Use jsdom for React component and hook tests
           // No setup files - keep it simple
         },
       },
