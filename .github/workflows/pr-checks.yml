@@ -116,9 +116,9 @@ jobs:
         id: coverage
         if: always()
         run: |
-          # Try multiple possible paths for coverage-summary.json
+          # Try multiple possible paths for coverage files
           COVERAGE_FILE=""
-          for path in "coverage/unit/coverage-summary.json" "coverage/unit/coverage/coverage-summary.json" "./coverage/unit/coverage-summary.json"; do
+          for path in "coverage/unit/coverage-final.json" "coverage/unit/coverage-summary.json" "coverage/unit/coverage/coverage-summary.json" "./coverage/unit/coverage-final.json"; do
             if [ -f "$path" ]; then
               COVERAGE_FILE="$path"
               break
@@ -127,19 +127,23 @@ jobs:
           
           if [ -n "$COVERAGE_FILE" ]; then
             echo "Found coverage file: $COVERAGE_FILE"
-            # Extract coverage percentages from JSON
-            COVERAGE_TABLE=$(cat "$COVERAGE_FILE" | jq -r '
-              "| Metric | Coverage |\n|--------|----------|\n" +
-              "| Statements | " + (.total.statements.pct | tostring) + "% |\n" +
-              "| Branches | " + (.total.branches.pct | tostring) + "% |\n" +
-              "| Functions | " + (.total.functions.pct | tostring) + "% |\n" +
-              "| Lines | " + (.total.lines.pct | tostring) + "% |"
-            ')
-            echo "table<<EOF" >> $GITHUB_OUTPUT
-            echo "$COVERAGE_TABLE" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            # Extract coverage table using the extraction script (includes detailed file breakdown)
+            COVERAGE_TABLE=$(bash scripts/extract-coverage-table.sh "$COVERAGE_FILE" 2>&1)
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 0 ] && [ -n "$COVERAGE_TABLE" ] && ! echo "$COVERAGE_TABLE" | grep -q "null%"; then
+              echo "table<<EOF" >> $GITHUB_OUTPUT
+              echo "$COVERAGE_TABLE" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "Failed to extract coverage data from $COVERAGE_FILE (exit code: $EXIT_CODE)"
+              if [ -n "$COVERAGE_TABLE" ]; then
+                echo "Error output: $COVERAGE_TABLE" >&2
+              fi
+              echo "table=❌ Failed to extract coverage data" >> $GITHUB_OUTPUT
+            fi
           else
             echo "Coverage file not found. Searched:"
+            echo "  - coverage/unit/coverage-final.json"
             echo "  - coverage/unit/coverage-summary.json"
             echo "  - coverage/unit/coverage/coverage-summary.json"
             echo "Available files in coverage/unit/:"
@@ -148,18 +152,14 @@ jobs:
           fi
 
       - name: Post coverage comment
-        if: always()
+        if: success() && steps.coverage.outcome == 'success'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: unit-test-coverage
           message: |
-            ## 📊 Unit Test Coverage
+            ## 🧪 Unit Test Coverage
             
-            ${{ github.event_name == 'pull_request' && format('For commit: {0}', github.event.pull_request.head.sha) || format('For commit: {0}', github.sha) }}
-            
-            ${{ github.event_name == 'pull_request' && format('Branch: {0}', github.event.pull_request.head.ref) || format('Branch: {0}', github.ref_name) }}
-            
-            ${{ job.status == 'success' && '✅ Tests passed' || '❌ Tests failed' }}
+            ${{ github.event_name == 'pull_request' && format('Commit: `{0}`', github.event.pull_request.head.sha) || format('Commit: `{0}`', github.sha) }}
             
             ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
         env:
@@ -205,9 +205,9 @@ jobs:
         id: coverage
         if: always()
         run: |
-          # Try multiple possible paths for coverage-summary.json
+          # Try multiple possible paths for coverage files
           COVERAGE_FILE=""
-          for path in "coverage/integration/coverage-summary.json" "coverage/integration/coverage/coverage-summary.json" "./coverage/integration/coverage-summary.json"; do
+          for path in "coverage/integration/coverage-final.json" "coverage/integration/coverage-summary.json" "coverage/integration/coverage/coverage-summary.json" "./coverage/integration/coverage-final.json"; do
             if [ -f "$path" ]; then
               COVERAGE_FILE="$path"
               break
@@ -216,18 +216,23 @@ jobs:
           
           if [ -n "$COVERAGE_FILE" ]; then
             echo "Found coverage file: $COVERAGE_FILE"
-            COVERAGE_TABLE=$(cat "$COVERAGE_FILE" | jq -r '
-              "| Metric | Coverage |\n|--------|----------|\n" +
-              "| Statements | " + (.total.statements.pct | tostring) + "% |\n" +
-              "| Branches | " + (.total.branches.pct | tostring) + "% |\n" +
-              "| Functions | " + (.total.functions.pct | tostring) + "% |\n" +
-              "| Lines | " + (.total.lines.pct | tostring) + "% |"
-            ')
-            echo "table<<EOF" >> $GITHUB_OUTPUT
-            echo "$COVERAGE_TABLE" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            # Extract coverage table using the extraction script (includes detailed file breakdown)
+            COVERAGE_TABLE=$(bash scripts/extract-coverage-table.sh "$COVERAGE_FILE" 2>&1)
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 0 ] && [ -n "$COVERAGE_TABLE" ] && ! echo "$COVERAGE_TABLE" | grep -q "null%"; then
+              echo "table<<EOF" >> $GITHUB_OUTPUT
+              echo "$COVERAGE_TABLE" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "Failed to extract coverage data from $COVERAGE_FILE (exit code: $EXIT_CODE)"
+              if [ -n "$COVERAGE_TABLE" ]; then
+                echo "Error output: $COVERAGE_TABLE" >&2
+              fi
+              echo "table=❌ Failed to extract coverage data" >> $GITHUB_OUTPUT
+            fi
           else
             echo "Coverage file not found. Searched:"
+            echo "  - coverage/integration/coverage-final.json"
             echo "  - coverage/integration/coverage-summary.json"
             echo "  - coverage/integration/coverage/coverage-summary.json"
             echo "Available files in coverage/integration/:"
@@ -236,18 +241,14 @@ jobs:
           fi
 
       - name: Post coverage comment
-        if: always()
+        if: success() && steps.coverage.outcome == 'success'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: integration-test-coverage
           message: |
-            ## 📊 Integration Test Coverage
+            ## 🔗 Integration Test Coverage
             
-            ${{ github.event_name == 'pull_request' && format('For commit: {0}', github.event.pull_request.head.sha) || format('For commit: {0}', github.sha) }}
-            
-            ${{ github.event_name == 'pull_request' && format('Branch: {0}', github.event.pull_request.head.ref) || format('Branch: {0}', github.ref_name) }}
-            
-            ${{ steps.coverage.outcome == 'success' && '✅ Tests passed' || '❌ Tests failed or coverage not found' }}
+            ${{ github.event_name == 'pull_request' && format('Commit: `{0}`', github.event.pull_request.head.sha) || format('Commit: `{0}`', github.sha) }}
             
             ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
         env:

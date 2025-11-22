@@ -40,6 +40,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:all": "bun run test:unit && bun run test:integration && bun run test:e2e",
+    "test:coverage:extract": "bash scripts/test-coverage-extraction.sh",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "test:unit:coverage": "COVERAGE_DIR=./coverage/unit vitest run --project unit --coverage",
