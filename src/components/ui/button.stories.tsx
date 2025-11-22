@@ -177,7 +177,10 @@ export const DisabledDestructive: Story = {
 export const Interactive: Story = {
   args: {
     children: "Click me",
-    onClick: () => alert("Button clicked!"),
+    onClick: () => {
+      // Interactive button - click handler for demonstration
+      // Handler can be inspected in Storybook's Actions panel
+    },
   },
 };
 
@@ -207,13 +210,13 @@ export const AllSizes: Story = {
         <Button size="lg">Large</Button>
       </div>
       <div className="flex items-center gap-2">
-        <Button size="icon-sm">
+        <Button size="icon-sm" aria-label="Like">
           <Heart className="size-4" />
         </Button>
-        <Button size="icon">
+        <Button size="icon" aria-label="Like">
           <Heart className="size-4" />
         </Button>
-        <Button size="icon-lg">
+        <Button size="icon-lg" aria-label="Like">
           <Heart className="size-4" />
         </Button>
       </div>

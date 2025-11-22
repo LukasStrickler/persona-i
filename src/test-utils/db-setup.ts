@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as schema from "@/server/db/schema";
-import { getTestDbClient } from "./db";
+import { getTestDbClient, clearTestDbCache } from "./db";
 import {
   getTestDatabaseUrl,
   isInMemoryDb,
@@ -67,7 +67,7 @@ export async function clearTestDb() {
   // For in-memory databases, just recreate the connection
   if (isInMemoryDb(dbUrl)) {
     client.close();
-    // The next call to getTestDbClient() will create a fresh connection
+    clearTestDbCache(); // Clear the cached client so next call creates a fresh connection
     return;
   }
 
@@ -90,25 +90,20 @@ export async function clearTestDb() {
         return;
       }
 
-      // Disable foreign key checks
-      await db.run(sql`PRAGMA foreign_keys = OFF`);
-
-      // Delete all rows from each table
       // Use a transaction to ensure atomicity
-      for (const table of tables) {
-        try {
-          const tableName = table.replace(/"/g, '""');
-          await db.run(sql.raw(`DELETE FROM "${tableName}"`));
-        } catch (error) {
-          console.error(`Error clearing table ${table}:`, error);
-          // Re-enable foreign keys before re-throwing
-          await db.run(sql`PRAGMA foreign_keys = ON`);
-          throw error;
-        }
-      }
+      await db.transaction(async (tx) => {
+        // Disable foreign key checks
+        await tx.run(sql`PRAGMA foreign_keys = OFF`);
 
-      // Re-enable foreign key checks
-      await db.run(sql`PRAGMA foreign_keys = ON`);
+        // Delete all rows from each table
+        for (const table of tables) {
+          const tableName = table.replace(/"/g, '""');
+          await tx.run(sql.raw(`DELETE FROM "${tableName}"`));
+        }
+
+        // Re-enable foreign key checks
+        await tx.run(sql`PRAGMA foreign_keys = ON`);
+      });
     } catch (error) {
       console.error("Error clearing test database:", error);
       throw error;

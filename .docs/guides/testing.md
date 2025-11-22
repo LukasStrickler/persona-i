@@ -30,10 +30,11 @@ graph TD
 ### Code Tests
 
 ```bash
-bun run test:all          # Run all tests (Vitest + Playwright E2E)
+bun run test:all          # Run all tests (Vitest + Playwright E2E + Storybook)
 bun run test:unit         # Run unit tests only (Vitest)
 bun run test:integration  # Run integration tests only (Vitest)
 bun run test:e2e          # Run end-to-end tests only (Playwright)
+bun run test:storybook    # Run automated interaction tests for stories (Storybook)
 bun run test:watch        # Start watch mode for rapid development (Vitest)
 ```
 
@@ -48,11 +49,11 @@ bun run test:storybook    # Run automated interaction tests for stories
 
 ### Environments
 
-| Test Type       | Environment | Description                                                         |
-| :-------------- | :---------- | :------------------------------------------------------------------ |
-| **Unit**        | `jsdom`     | Simulates a browser DOM for React components and logic.             |
-| **Integration** | `node`      | Runs in a server-like environment for DB and API testing.           |
-| **E2E**         | `browser`   | Runs in actual browsers (Chromium, Firefox, WebKit) via Playwright. |
+| Test Type       | Environment | Description                                                                    |
+| :-------------- | :---------- | :----------------------------------------------------------------------------- |
+| **Unit**        | `node`      | Runs in a server-like environment for pure logic and isolated component tests. |
+| **Integration** | `node`      | Runs in a server-like environment for DB and API testing.                      |
+| **E2E**         | `browser`   | Runs in actual browsers (Chromium, Firefox, WebKit) via Playwright.            |
 
 ### Database Isolation
 
@@ -165,10 +166,10 @@ bun run test:e2e:ui       # Run with Playwright UI mode
 
 **Key Points:**
 
-- E2E tests use **Playwright's test API** (`import { test, expect } from "playwright/test"`), not Vitest
+- E2E tests use **Playwright's test API** (`import { test, expect } from "@playwright/test"`), not Vitest
 - Tests are configured via `playwright.config.ts`
 - The webServer configuration automatically starts and manages the Next.js dev server
-- Each test worker gets its own isolated in-memory database instance
+- All E2E tests run sequentially with a single worker, sharing the same webServer instance and database
 - Test results are stored in `.test-results/` (gitignored)
 - HTML reports are generated automatically - view by opening HTML files in `.test-results/` after test runs
 
@@ -176,7 +177,7 @@ bun run test:e2e:ui       # Run with Playwright UI mode
 
 ```typescript
 // src/app/__tests__/homepage.e2e.test.ts
-import { test, expect } from "playwright/test";
+import { test, expect } from "@playwright/test";
 
 /**
  * Base URL for e2e tests.
@@ -200,7 +201,7 @@ Define the different states of your UI components. These serve as both documenta
 
 ```typescript
 // src/components/ui/Button.stories.tsx
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Button } from "./Button";
 
 const meta: Meta<typeof Button> = {

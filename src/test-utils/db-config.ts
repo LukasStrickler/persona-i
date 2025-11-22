@@ -14,7 +14,7 @@ export function getTestDatabaseUrl(): string {
     return testDbUrl;
   }
 
-  // Default to in-memory SQLite with shared cache for parallel connections
+  // Default to isolated in-memory SQLite (enables parallel test execution)
   return "file::memory:";
 }
 

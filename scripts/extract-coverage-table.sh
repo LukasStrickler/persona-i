@@ -20,10 +20,7 @@ COVERAGE_TABLE=$(cat "$COVERAGE_FILE" | jq -r '
   def rel_path(path): 
     path | 
     if startswith("/") then 
-      split("/") | 
-      if .[0:3] == ["", "Users", "lukasstrickler"] then .[4:] | join("/") 
-      elif .[0:2] == ["", "home"] then .[2:] | join("/")
-      else .[1:] | join("/") end
+      split("/") | .[1:] | join("/")
     else path end;
   
   # Get all file entries with coverage data
@@ -45,7 +42,7 @@ COVERAGE_TABLE=$(cat "$COVERAGE_FILE" | jq -r '
       covered: ([.value.f | to_entries | map(.value) | map(select(. > 0)) | length] | add // 0)
     },
     lines: {
-      total: (.value.statementMap | to_entries | length),
+      total: (.value.s | length),
       covered: ([.value.s | to_entries | map(.value) | map(select(. > 0)) | length] | add // 0)
     }
   }) |

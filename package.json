@@ -39,7 +39,7 @@
     "pr:list": "bash scripts/pr-comments-fetch.sh list",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "test:all": "bun run test:unit && bun run test:integration && bun run test:e2e",
+    "test:all": "bun run test:unit && bun run test:integration && bun run test:e2e && bun run test:storybook",
     "test:coverage:extract": "bash scripts/test-coverage-extraction.sh",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",

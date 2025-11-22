@@ -186,7 +186,17 @@ The application will be available at `http://localhost:3000`.
 | `bun run format:check`   | Check code formatting with Prettier              |
 | `bun run format:write`   | Format code with Prettier                        |
 | `bun run agent:finalize` | Run all quality checks (typecheck, lint, format) |
-| `bun run ci:finalize`    | Run CI quality checks                            |
+
+#### Testing
+
+| Command                    | Description                                       |
+| -------------------------- | ------------------------------------------------- |
+| `bun run test:all`         | Run all tests (unit, integration, e2e, storybook) |
+| `bun run test:unit`        | Run unit tests only                               |
+| `bun run test:integration` | Run integration tests only                        |
+| `bun run test:e2e`         | Run end-to-end tests only                         |
+| `bun run test:storybook`   | Run Storybook interaction tests                   |
+| `bun run test:watch`       | Start watch mode for rapid development            |
 
 #### Documentation & Reviews
 
