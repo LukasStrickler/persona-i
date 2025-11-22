@@ -34,6 +34,7 @@ Persona[i] is a personality benchmarking platform that hosts personality questio
 persona-i/
 ├── .docs/                     # Documentation
 │   ├── api/                   # API documentation
+│   ├── architecture/         # Architecture documentation
 │   ├── db/                    # Database documentation
 │   ├── workflow/              # Workflow diagrams
 │   └── DOCUMENTATION_GUIDE.md # Documentation guidelines
@@ -51,6 +52,8 @@ persona-i/
 │   │   ├── auth/
 │   │   ├── landing/
 │   │   ├── providers/
+│   │   ├── test-analysis/    # Test analysis components
+│   │   ├── test-taking/      # Test-taking UI components
 │   │   └── ui/
 │   ├── emails/                # Email templates
 │   ├── hooks/
@@ -143,6 +146,7 @@ The application will be available at `http://localhost:3000`.
 ### Documentation
 
 - **[API Documentation](./.docs/api/)** - API endpoints and authentication flow
+- **[Architecture Documentation](./.docs/architecture/)** - System architecture and design patterns
 - **[Database Documentation](./.docs/db/)** - Database schema and structure
 - **[Workflow Diagrams](./.docs/workflow/)** - Process workflows and sequences
 
@@ -150,23 +154,26 @@ The application will be available at `http://localhost:3000`.
 
 #### Development
 
-| Command           | Description                       |
-| ----------------- | --------------------------------- |
-| `bun run dev`     | Start development server          |
-| `bun run build`   | Build for production              |
-| `bun run start`   | Start production server           |
-| `bun run preview` | Build and start production server |
-| `bun run email`   | Start email preview server        |
+| Command             | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| `bun run dev`       | Start development server                                    |
+| `bun run build`     | Build for production                                        |
+| `bun run start`     | Start production server                                     |
+| `bun run preview`   | Build and start production server                           |
+| `bun run email`     | Start email preview server                                  |
+| `bun run storybook` | Start Storybook for component development                   |
+| `bun run ci:setup`  | First-time setup (creates `.env` and installs dependencies) |
 
 #### Database
 
-| Command               | Description                                 |
-| --------------------- | ------------------------------------------- |
-| `bun run db:setup`    | Setup database with mock data               |
-| `bun run db:generate` | Generate database migrations                |
-| `bun run db:migrate`  | Run database migrations                     |
-| `bun run db:push`     | Push schema changes to database             |
-| `bun run db:studio`   | Open Drizzle Studio for database management |
+| Command                 | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| `bun run db:setup`      | Setup database with mock data               |
+| `bun run db:setup:full` | Setup database with full mock data          |
+| `bun run db:generate`   | Generate database migrations                |
+| `bun run db:migrate`    | Run database migrations                     |
+| `bun run db:push`       | Push schema changes to database             |
+| `bun run db:studio`     | Open Drizzle Studio for database management |
 
 #### Code Quality
 
@@ -179,7 +186,17 @@ The application will be available at `http://localhost:3000`.
 | `bun run format:check`   | Check code formatting with Prettier              |
 | `bun run format:write`   | Format code with Prettier                        |
 | `bun run agent:finalize` | Run all quality checks (typecheck, lint, format) |
-| `bun run ci:finalize`    | Run CI quality checks                            |
+
+#### Testing
+
+| Command                    | Description                                       |
+| -------------------------- | ------------------------------------------------- |
+| `bun run test:all`         | Run all tests (unit, integration, e2e, storybook) |
+| `bun run test:unit`        | Run unit tests only                               |
+| `bun run test:integration` | Run integration tests only                        |
+| `bun run test:e2e`         | Run end-to-end tests only                         |
+| `bun run test:storybook`   | Run Storybook interaction tests                   |
+| `bun run test:watch`       | Start watch mode for rapid development            |
 
 #### Documentation & Reviews
 

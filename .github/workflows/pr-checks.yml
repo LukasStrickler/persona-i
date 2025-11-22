@@ -1,6 +1,8 @@
 name: PR Checks
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   push:
     paths:
       # TypeScript/JavaScript files
@@ -18,6 +20,9 @@ on:
       - 'prettier.config.js'
       - 'prettier.config.*'
       - '.prettierrc*'
+      # Test config files
+      - 'vitest.config.ts'
+      - 'playwright.config.ts'
       # Package files
       - 'package.json'
       - 'bun.lock'
@@ -78,3 +83,258 @@ jobs:
 
       - name: Run format check
         run: bunx prettier --check "**/*.{ts,tsx,js,jsx,md,mdx}" --no-cache
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run unit tests with coverage
+        run: COVERAGE_DIR=./coverage/unit bun run test:unit --coverage
+        env:
+          DATABASE_URL: "file::memory:"
+          DATABASE_TOKEN: "test-token"
+          NODE_ENV: "test"
+          BETTER_AUTH_SECRET: "test-secret-minimum-32-characters-long-for-validation"
+          RESEND_API_KEY: "test-resend-key"
+          RESEND_FROM: "test@example.com"
+          CONTACT_EMAIL: "test@example.com"
+
+      - name: Extract coverage summary
+        id: coverage
+        if: always()
+        run: |
+          # Try multiple possible paths for coverage files
+          COVERAGE_FILE=""
+          for path in "coverage/unit/coverage-final.json" "coverage/unit/coverage-summary.json" "coverage/unit/coverage/coverage-summary.json" "./coverage/unit/coverage-final.json"; do
+            if [ -f "$path" ]; then
+              COVERAGE_FILE="$path"
+              break
+            fi
+          done
+          
+          if [ -n "$COVERAGE_FILE" ]; then
+            echo "Found coverage file: $COVERAGE_FILE"
+            # Extract coverage table using the extraction script (includes detailed file breakdown)
+            COVERAGE_TABLE=$(bash scripts/extract-coverage-table.sh "$COVERAGE_FILE" 2>&1)
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 0 ] && [ -n "$COVERAGE_TABLE" ] && ! echo "$COVERAGE_TABLE" | grep -q "null%"; then
+              echo "table<<EOF" >> $GITHUB_OUTPUT
+              echo "$COVERAGE_TABLE" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "Failed to extract coverage data from $COVERAGE_FILE (exit code: $EXIT_CODE)"
+              if [ -n "$COVERAGE_TABLE" ]; then
+                echo "Error output: $COVERAGE_TABLE" >&2
+              fi
+              echo "table=❌ Failed to extract coverage data" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Coverage file not found. Searched:"
+            echo "  - coverage/unit/coverage-final.json"
+            echo "  - coverage/unit/coverage-summary.json"
+            echo "  - coverage/unit/coverage/coverage-summary.json"
+            echo "Available files in coverage/unit/:"
+            ls -la coverage/unit/ 2>/dev/null || echo "Directory not found"
+            echo "table=❌ Coverage report not found" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post coverage comment
+        if: success() && steps.coverage.outcome == 'success'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: unit-test-coverage-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          message: |
+            ## 🧪 Unit Test Coverage
+            
+            Commit: `${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}`
+            
+            ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-coverage
+          path: coverage/unit/
+          retention-days: 30
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run integration tests with coverage
+        run: COVERAGE_DIR=./coverage/integration bun run test:integration --coverage
+        env:
+          DATABASE_URL: "file::memory:"
+          DATABASE_TOKEN: "test-token"
+          NODE_ENV: "test"
+          BETTER_AUTH_SECRET: "test-secret-minimum-32-characters-long-for-validation"
+          RESEND_API_KEY: "test-resend-key"
+          RESEND_FROM: "test@example.com"
+          CONTACT_EMAIL: "test@example.com"
+
+      - name: Extract coverage summary
+        id: coverage
+        if: always()
+        run: |
+          # Try multiple possible paths for coverage files
+          COVERAGE_FILE=""
+          for path in "coverage/integration/coverage-final.json" "coverage/integration/coverage-summary.json" "coverage/integration/coverage/coverage-summary.json" "./coverage/integration/coverage-final.json"; do
+            if [ -f "$path" ]; then
+              COVERAGE_FILE="$path"
+              break
+            fi
+          done
+          
+          if [ -n "$COVERAGE_FILE" ]; then
+            echo "Found coverage file: $COVERAGE_FILE"
+            # Extract coverage table using the extraction script (includes detailed file breakdown)
+            COVERAGE_TABLE=$(bash scripts/extract-coverage-table.sh "$COVERAGE_FILE" 2>&1)
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 0 ] && [ -n "$COVERAGE_TABLE" ] && ! echo "$COVERAGE_TABLE" | grep -q "null%"; then
+              echo "table<<EOF" >> $GITHUB_OUTPUT
+              echo "$COVERAGE_TABLE" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "Failed to extract coverage data from $COVERAGE_FILE (exit code: $EXIT_CODE)"
+              if [ -n "$COVERAGE_TABLE" ]; then
+                echo "Error output: $COVERAGE_TABLE" >&2
+              fi
+              echo "table=❌ Failed to extract coverage data" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Coverage file not found. Searched:"
+            echo "  - coverage/integration/coverage-final.json"
+            echo "  - coverage/integration/coverage-summary.json"
+            echo "  - coverage/integration/coverage/coverage-summary.json"
+            echo "Available files in coverage/integration/:"
+            ls -la coverage/integration/ 2>/dev/null || echo "Directory not found"
+            echo "table=❌ Coverage report not found" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post coverage comment
+        if: success() && steps.coverage.outcome == 'success'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: integration-test-coverage-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          message: |
+            ## 🔗 Integration Test Coverage
+            
+            Commit: `${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}`
+            
+            ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-coverage
+          path: coverage/integration/
+          retention-days: 30
+
+  test-e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: bun run test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: .playwright-report/
+          retention-days: 30
+
+  test-storybook:
+    name: Storybook Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Storybook tests
+        run: bun run test:storybook
+        env:
+          DATABASE_URL: "file::memory:"
+          DATABASE_TOKEN: "test-token"
+          NODE_ENV: "test"
+          BETTER_AUTH_SECRET: "test-secret-minimum-32-characters-long-for-validation"
+          RESEND_API_KEY: "test-resend-key"
+          RESEND_FROM: "test@example.com"
+          CONTACT_EMAIL: "test@example.com"
+

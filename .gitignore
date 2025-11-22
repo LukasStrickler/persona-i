@@ -7,6 +7,7 @@
 
 # testing
 /coverage
+.test-results
 
 # database
 /prisma/db.sqlite
@@ -61,3 +62,6 @@ yarn-error.log*
 
 # PR comments
 .github/pr-comments/
+
+*storybook.log
+storybook-static
