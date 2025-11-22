@@ -107,7 +107,7 @@ COVERAGE_TABLE=$(cat "$COVERAGE_FILE" | jq -r '
     (calc_pct(.totals.functions.covered; .totals.functions.total) | tostring) + "% | " +
     (calc_pct(.totals.lines.covered; .totals.lines.total) | tostring) + "% |\n" +
   ([.directories[] | 
-    "| <u>" + .dir_display + "</u> | " +
+    "| **" + .dir_display + "** | " +
     (calc_pct(.totals.statements.covered; .totals.statements.total) | tostring) + "% | " +
     (calc_pct(.totals.branches.covered; .totals.branches.total) | tostring) + "% | " +
     (calc_pct(.totals.functions.covered; .totals.functions.total) | tostring) + "% | " +
