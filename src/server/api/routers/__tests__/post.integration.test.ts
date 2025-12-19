@@ -1,32 +1,22 @@
-import { describe, expect, it, beforeAll, afterAll, beforeEach } from "vitest";
-import { getTestDb } from "@/test-utils/db";
-import { setupTestDb, teardownTestDb } from "@/test-utils/db-setup";
+import { describe, expect, it, beforeEach } from "vitest";
+import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
 import { posts } from "@/server/db/schema";
-import { sql } from "drizzle-orm";
 
 /**
  * Integration test for post database operations.
  *
  * This test demonstrates:
  * - Testing database operations with in-memory SQLite
- * - Using setupTestDb and teardownTestDb for test lifecycle
+ * - Creating fresh database for each test (matches Eilbote-Website pattern)
  * - Testing CRUD operations with real database queries
- * - Clearing data between tests for isolation
+ * - Complete isolation between tests
  */
 describe("Post Database Operations", () => {
-  const db = getTestDb();
-
-  beforeAll(async () => {
-    await setupTestDb();
-  });
-
-  afterAll(async () => {
-    await teardownTestDb();
-  });
+  let db: TestDatabase;
 
   beforeEach(async () => {
-    // Clear posts table before each test for isolation
-    await db.run(sql`DELETE FROM ${posts}`);
+    // Create a fresh database for each test (matches Eilbote-Website pattern)
+    db = await createTestDatabase();
   });
 
   it("should create a post", async () => {
