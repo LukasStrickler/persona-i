@@ -138,10 +138,6 @@ export const questionnairesRouter = createTRPCRouter({
         throw new Error("Questionnaire not found");
       }
 
-      if (!q.activeVersion) {
-        throw new Error("No active version found for this questionnaire");
-      }
-
       // Check if user has access (public or private access)
       if (!q.isPublic) {
         // Check private access

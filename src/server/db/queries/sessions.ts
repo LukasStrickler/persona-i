@@ -9,10 +9,10 @@ import {
   questionOption,
   response,
 } from "@/server/db/schema";
-import type { db as DbInstance } from "@/server/db";
+import type { db as DbType } from "@/server/db";
 
 export async function getOrCreateSubjectProfile(
-  db: typeof DbInstance,
+  db: typeof DbType,
   userId: string,
   userName: string | null,
   userEmail: string,
@@ -38,7 +38,13 @@ export async function getOrCreateSubjectProfile(
       updatedAt: now,
     });
 
-    subjectProfileRecord = {
+    // Priority 3: Fetch the newly created profile from the database to avoid duplicating the schema
+    subjectProfileRecord = await db.query.subjectProfile.findFirst({
+      where: eq(subjectProfile.id, subjectProfileId),
+    });
+
+    // Priority 3: Fallback to manual construction if, for some unexpected reason, the record cannot be fetched
+    subjectProfileRecord ??= {
       id: subjectProfileId,
       subjectType: "human",
       userId,
@@ -55,7 +61,7 @@ export async function getOrCreateSubjectProfile(
 }
 
 export async function createAssessmentSession(
-  db: typeof DbInstance,
+  db: typeof DbType,
   {
     questionnaireVersionId,
     subjectProfileId,
@@ -97,22 +103,15 @@ export async function createAssessmentSession(
     updatedAt: now,
   });
 
-  return {
-    id: sessionId,
-    questionnaireVersionId,
-    subjectProfileId,
-    userId,
-    status: "in_progress",
-    startedAt: now,
-    completedAt: null,
-    metadataJson: null,
-    createdAt: now,
-    updatedAt: now,
-  };
+  const newSession = await db.query.assessmentSession.findFirst({
+    where: eq(assessmentSession.id, sessionId),
+  });
+
+  return newSession!;
 }
 
 export async function getAssessmentSession(
-  db: typeof DbInstance,
+  db: typeof DbType,
   sessionId: string,
   userId: string,
 ) {
@@ -232,7 +231,7 @@ export async function getAssessmentSession(
  * Complete an assessment session
  */
 export async function completeSession(
-  db: typeof DbInstance,
+  db: typeof DbType,
   sessionId: string,
   userId: string,
 ) {
@@ -272,7 +271,7 @@ export async function completeSession(
  * Get incomplete sessions for a user for a specific questionnaire
  */
 export async function getIncompleteSessions(
-  db: typeof DbInstance,
+  db: typeof DbType,
   questionnaireId: string,
   userId: string,
 ) {
@@ -327,7 +326,7 @@ export async function getIncompleteSessions(
  * Lightweight endpoint for cache invalidation checks
  */
 export async function getUserSessionIds(
-  db: typeof DbInstance,
+  db: typeof DbType,
   questionnaireId: string,
   userId: string,
 ) {

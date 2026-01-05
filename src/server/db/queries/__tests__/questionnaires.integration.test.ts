@@ -22,7 +22,7 @@ describe("Questionnaire Queries", () => {
   let db: TestDatabase;
 
   beforeEach(async () => {
-    // Create a fresh database for each test (matches Eilbote-Website pattern)
+    // Create a fresh database for each test (matches isolated test pattern)
     db = await createTestDatabase();
 
     // Seed required question types

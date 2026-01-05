@@ -24,7 +24,7 @@ export function getTestDatabaseUrl(): string {
   }
 
   // Default to isolated in-memory SQLite (enables parallel test execution)
-  // Use ":memory:" for proper isolation (matches Eilbote-Website pattern)
+  // Use ":memory:" for proper isolation (matches isolated test pattern)
   // Each connection gets its own isolated database instance
   return ":memory:";
 }

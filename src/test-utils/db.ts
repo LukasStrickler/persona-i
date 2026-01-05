@@ -43,7 +43,7 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const url = getTestDatabaseUrl();
   const token = getTestDatabaseToken();
 
-  // Use ":memory:" for proper isolation (matches Eilbote-Website pattern)
+  // Use ":memory:" for proper isolation (matches isolated test pattern)
   const client = createClient({
     url,
     authToken: token || undefined,
@@ -59,4 +59,25 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   await migrate(db, { migrationsFolder: migrationsPath });
 
   return db;
+}
+
+/**
+ * Priority 3: Closes the underlying client for a test database instance.
+ * Essential for preventing resource leaks in test suites.
+ *
+ * Recommended usage in tests:
+ * ```ts
+ * let db: TestDatabase;
+ *
+ * beforeEach(async () => {
+ *   db = await createTestDatabase();
+ * });
+ *
+ * afterEach(async () => {
+ *   await closeTestDatabase(db);
+ * });
+ * ```
+ */
+export async function closeTestDatabase(db: TestDatabase): Promise<void> {
+  db.$client.close();
 }

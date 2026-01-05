@@ -48,7 +48,6 @@ describe("useSaveResponse", () => {
               id: "item-1",
               position: 0,
               section: null,
-              questionId: "q1",
               question: {
                 id: "q1",
                 prompt: "Test question",
@@ -83,7 +82,6 @@ describe("useSaveResponse", () => {
               id: "item-1",
               position: 0,
               section: null,
-              questionId: "q1",
               question: {
                 id: "q1",
                 prompt: "Test question",

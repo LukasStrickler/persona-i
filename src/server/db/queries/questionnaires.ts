@@ -303,7 +303,7 @@ export async function getQuestionnaireById(db: typeof DbInstance, id: string) {
   });
 
   if (!activeVersion) {
-    return null;
+    throw new Error("No active version found for this questionnaire");
   }
 
   return {

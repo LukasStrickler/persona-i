@@ -9,7 +9,6 @@ import {
 } from "@/server/db/schema";
 import type { db as DbInstance } from "@/server/db";
 import { mapResponseValueToData } from "@/server/lib/responses";
-import { logger } from "@/lib/logger";
 
 export async function saveResponse(
   db: typeof DbInstance,
@@ -178,75 +177,81 @@ export async function saveResponsesBatch(
   const failed: { questionId: string; error: string }[] = [];
 
   // Process sequentially to ensure consistency (could be optimized with transactions/batch inserts)
-  for (const resp of responses) {
-    try {
-      if (!validQuestionIds.has(resp.questionId)) {
-        throw new Error(
-          "Question does not belong to this session's questionnaire",
+  return db.transaction(async (tx) => {
+    if (responses.length === 0) {
+      throw new Error("Cannot save empty responses array");
+    }
+
+    for (const resp of responses) {
+      try {
+        if (!validQuestionIds.has(resp.questionId)) {
+          throw new Error(
+            "Question does not belong to this session's questionnaire",
+          );
+        }
+
+        const question = questionsMap.get(resp.questionId);
+        if (!question) {
+          throw new Error("Question not found");
+        }
+
+        const responseData = mapResponseValueToData(
+          question.questionTypeCode,
+          {
+            value: resp.value,
+            selectedOptionId: resp.selectedOptionId,
+            selectedOptionIds: resp.selectedOptionIds,
+          },
+          {
+            assessmentSessionId: sessionId,
+            questionId: resp.questionId,
+            updatedAt: now,
+          },
         );
-      }
 
-      const question = questionsMap.get(resp.questionId);
-      if (!question) {
-        throw new Error("Question not found");
-      }
+        // Check for existing response
+        const existingResponse = await tx.query.response.findFirst({
+          where: and(
+            eq(response.assessmentSessionId, sessionId),
+            eq(response.questionId, resp.questionId),
+          ),
+        });
 
-      const responseData = mapResponseValueToData(
-        question.questionTypeCode,
-        {
-          value: resp.value,
-          selectedOptionId: resp.selectedOptionId,
-          selectedOptionIds: resp.selectedOptionIds,
-        },
-        {
-          assessmentSessionId: sessionId,
+        if (existingResponse) {
+          await tx
+            .update(response)
+            .set(responseData)
+            .where(eq(response.id, existingResponse.id));
+        } else {
+          const responseId = crypto.randomUUID();
+          await tx.insert(response).values({
+            id: responseId,
+            ...responseData,
+            createdAt: now,
+          });
+        }
+
+        savedCount++;
+      } catch (error) {
+        failed.push({
           questionId: resp.questionId,
-          updatedAt: now,
-        },
-      );
-
-      // Check for existing response
-      const existingResponse = await db.query.response.findFirst({
-        where: and(
-          eq(response.assessmentSessionId, sessionId),
-          eq(response.questionId, resp.questionId),
-        ),
-      });
-
-      if (existingResponse) {
-        await db
-          .update(response)
-          .set(responseData)
-          .where(eq(response.id, existingResponse.id));
-      } else {
-        const responseId = crypto.randomUUID();
-        await db.insert(response).values({
-          id: responseId,
-          ...responseData,
-          createdAt: now,
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-
-      savedCount++;
-    } catch (error) {
-      failed.push({
-        questionId: resp.questionId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
     }
-  }
 
-  // Update session updatedAt
-  await db
-    .update(assessmentSession)
-    .set({ updatedAt: now })
-    .where(eq(assessmentSession.id, sessionId));
+    // Update session updatedAt
+    await tx
+      .update(assessmentSession)
+      .set({ updatedAt: now })
+      .where(eq(assessmentSession.id, sessionId));
 
-  return {
-    success: failed.length === 0,
-    savedCount,
-    failed: failed.length > 0 ? failed : undefined,
-  };
+    return {
+      success: failed.length === 0,
+      savedCount,
+      failed: failed.length > 0 ? failed : undefined,
+    };
+  });
 }
 
 export async function getResponsesBySession(
@@ -333,11 +338,7 @@ export async function getModelResponses(
   const allModelProfilesResult = await db
     .select()
     .from(subjectProfile)
-    .where(eq(subjectProfile.subjectType, "llm"))
-    .catch((error) => {
-      logger.error("Failed to fetch model profiles:", error);
-      return [];
-    });
+    .where(eq(subjectProfile.subjectType, "llm"));
 
   const allModelProfiles = Array.isArray(allModelProfilesResult)
     ? allModelProfilesResult
