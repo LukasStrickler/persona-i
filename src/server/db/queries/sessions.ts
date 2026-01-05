@@ -227,3 +227,158 @@ export async function getAssessmentSession(
     sections, // New grouped structure
   };
 }
+
+/**
+ * Complete an assessment session
+ */
+export async function completeSession(
+  db: typeof DbInstance,
+  sessionId: string,
+  userId: string,
+) {
+  // Verify session ownership
+  const session = await db.query.assessmentSession.findFirst({
+    where: eq(assessmentSession.id, sessionId),
+  });
+
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  if (session.userId !== userId) {
+    throw new Error("Unauthorized - session does not belong to user");
+  }
+
+  if (session.status === "completed") {
+    return { success: true, message: "Session already completed" };
+  }
+
+  const now = new Date();
+
+  // Update session status
+  await db
+    .update(assessmentSession)
+    .set({
+      status: "completed",
+      completedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(assessmentSession.id, sessionId));
+
+  return { success: true };
+}
+
+/**
+ * Get incomplete sessions for a user for a specific questionnaire
+ */
+export async function getIncompleteSessions(
+  db: typeof DbInstance,
+  questionnaireId: string,
+  userId: string,
+) {
+  // Get active version for this questionnaire
+  const activeVersion = await db.query.questionnaireVersion.findFirst({
+    where: and(
+      eq(questionnaireVersion.questionnaireId, questionnaireId),
+      eq(questionnaireVersion.isActive, true),
+    ),
+  });
+
+  if (!activeVersion) {
+    return [];
+  }
+
+  // Get user's subject profile
+  const userProfile = await db.query.subjectProfile.findFirst({
+    where: and(
+      eq(subjectProfile.userId, userId),
+      eq(subjectProfile.subjectType, "human"),
+    ),
+  });
+
+  if (!userProfile) {
+    return [];
+  }
+
+  // Get incomplete sessions for this user and questionnaire version
+  const sessions = await db
+    .select({
+      id: assessmentSession.id,
+      status: assessmentSession.status,
+      startedAt: assessmentSession.startedAt,
+      updatedAt: assessmentSession.updatedAt,
+    })
+    .from(assessmentSession)
+    .where(
+      and(
+        eq(assessmentSession.questionnaireVersionId, activeVersion.id),
+        eq(assessmentSession.subjectProfileId, userProfile.id),
+        eq(assessmentSession.userId, userId),
+        eq(assessmentSession.status, "in_progress"),
+      ),
+    )
+    .orderBy(desc(assessmentSession.updatedAt));
+
+  return sessions;
+}
+
+/**
+ * Get user's session IDs and metadata for a questionnaire
+ * Lightweight endpoint for cache invalidation checks
+ */
+export async function getUserSessionIds(
+  db: typeof DbInstance,
+  questionnaireId: string,
+  userId: string,
+) {
+  // Get active version for this questionnaire
+  const activeVersion = await db.query.questionnaireVersion.findFirst({
+    where: and(
+      eq(questionnaireVersion.questionnaireId, questionnaireId),
+      eq(questionnaireVersion.isActive, true),
+    ),
+  });
+
+  if (!activeVersion) {
+    return { sessions: [] };
+  }
+
+  // Get user's subject profile
+  const userProfile = await db.query.subjectProfile.findFirst({
+    where: and(
+      eq(subjectProfile.userId, userId),
+      eq(subjectProfile.subjectType, "human"),
+    ),
+  });
+
+  if (!userProfile) {
+    return { sessions: [] };
+  }
+
+  // Get all user's sessions (completed and in_progress) for this questionnaire
+  const sessions = await db
+    .select({
+      id: assessmentSession.id,
+      status: assessmentSession.status,
+      completedAt: assessmentSession.completedAt,
+      updatedAt: assessmentSession.updatedAt,
+    })
+    .from(assessmentSession)
+    .where(
+      and(
+        eq(assessmentSession.questionnaireVersionId, activeVersion.id),
+        eq(assessmentSession.subjectProfileId, userProfile.id),
+        eq(assessmentSession.userId, userId),
+      ),
+    )
+    .orderBy(desc(assessmentSession.updatedAt));
+
+  return {
+    sessions: sessions.map((s) => ({
+      id: s.id,
+      status: s.status,
+      completedAt: s.completedAt,
+      updatedAt: s.updatedAt,
+    })),
+  };
+}

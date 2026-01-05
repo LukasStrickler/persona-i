@@ -250,4 +250,44 @@ export const questionnairesRouter = createTRPCRouter({
         userId: ctx.user.id,
       });
     }),
+
+  /**
+   * Complete a session
+   */
+  completeSession: protectedProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return sessionQueries.completeSession(
+        ctx.db,
+        input.sessionId,
+        ctx.user.id,
+      );
+    }),
+
+  /**
+   * Get incomplete sessions for the current user for a specific questionnaire
+   */
+  getIncompleteSessions: protectedProcedure
+    .input(z.object({ questionnaireId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return sessionQueries.getIncompleteSessions(
+        ctx.db,
+        input.questionnaireId,
+        ctx.user.id,
+      );
+    }),
+
+  /**
+   * Get user's session IDs and metadata for a questionnaire
+   * Lightweight endpoint for cache invalidation checks
+   */
+  getUserSessionIds: protectedProcedure
+    .input(z.object({ questionnaireId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return sessionQueries.getUserSessionIds(
+        ctx.db,
+        input.questionnaireId,
+        ctx.user.id,
+      );
+    }),
 });
