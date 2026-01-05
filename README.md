@@ -198,29 +198,6 @@ The application will be available at `http://localhost:3000`.
 | `bun run test:storybook`   | Run Storybook interaction tests                   |
 | `bun run test:watch`       | Start watch mode for rapid development            |
 
-#### Documentation & Reviews
-
-| Command                  | Description                        |
-| ------------------------ | ---------------------------------- |
-| `bun run docs:check`     | Check documentation updates needed |
-| `bun run review:task`    | Review uncommitted changes         |
-| `bun run review:pr`      | Review PR changes                  |
-| `bun run review:read`    | Read latest review results         |
-| `bun run review:cleanup` | Clean up review files              |
-
-#### PR Comments
-
-| Command                                   | Description                       |
-| ----------------------------------------- | --------------------------------- |
-| `bun run pr:comments`                     | Read PR comments                  |
-| `bun run pr:comments:detect`              | Detect unresolved PR comments     |
-| `bun run pr:comments:get`                 | Get PR comments                   |
-| `bun run pr:comments:resolve`             | Resolve PR comments               |
-| `bun run pr:comments:resolve:interactive` | Resolve PR comments interactively |
-| `bun run pr:comments:dismiss`             | Dismiss PR comments               |
-| `bun run pr:comments:cleanup`             | Clean up PR comment files         |
-| `bun run pr:list`                         | List PR comments                  |
-
 ---
 
 ## License

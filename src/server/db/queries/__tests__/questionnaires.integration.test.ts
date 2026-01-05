@@ -172,7 +172,9 @@ describe("Questionnaire Queries", () => {
     expect(result?.id).toBe(qId);
     expect(result?.version.id).toBe(vId);
     // Should not have items property (it's metadata only)
-    expect((result as any).items).toBeUndefined();
+    if (result) {
+      expect("items" in result).toBe(false);
+    }
   });
 
   it("should get user accessible private questionnaires", async () => {

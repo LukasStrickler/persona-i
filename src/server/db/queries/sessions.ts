@@ -227,3 +227,135 @@ export async function getAssessmentSession(
     sections, // New grouped structure
   };
 }
+
+/**
+ * Complete an assessment session
+ * Marks the session as completed and sets the completedAt timestamp
+ */
+export async function completeAssessmentSession(
+  db: typeof DbInstance,
+  sessionId: string,
+  userId: string,
+) {
+  // Verify session exists and ownership
+  const session = await db.query.assessmentSession.findFirst({
+    where: eq(assessmentSession.id, sessionId),
+  });
+
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  if (session.userId !== userId) {
+    throw new Error("Unauthorized - session does not belong to user");
+  }
+
+  if (session.status === "completed") {
+    // Already completed, return existing session
+    return session;
+  }
+
+  // Update session to completed
+  const now = new Date();
+  await db
+    .update(assessmentSession)
+    .set({
+      status: "completed",
+      completedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(assessmentSession.id, sessionId));
+
+  // Return updated session
+  const updatedSession = await db.query.assessmentSession.findFirst({
+    where: eq(assessmentSession.id, sessionId),
+  });
+
+  if (!updatedSession) {
+    throw new Error("Failed to retrieve updated session");
+  }
+
+  return updatedSession;
+}
+
+/**
+ * Get incomplete sessions for a user and questionnaire
+ * Returns sessions with status "in_progress" for the given user and questionnaire
+ */
+export async function getIncompleteSessions(
+  db: typeof DbInstance,
+  questionnaireId: string,
+  userId: string,
+) {
+  // Get active version for this questionnaire
+  const activeVersion = await db.query.questionnaireVersion.findFirst({
+    where: and(
+      eq(questionnaireVersion.questionnaireId, questionnaireId),
+      eq(questionnaireVersion.isActive, true),
+    ),
+  });
+
+  if (!activeVersion) {
+    return [];
+  }
+
+  // Get user's incomplete sessions for this questionnaire version
+  const sessions = await db
+    .select({
+      id: assessmentSession.id,
+      status: assessmentSession.status,
+      startedAt: assessmentSession.startedAt,
+      updatedAt: assessmentSession.updatedAt,
+    })
+    .from(assessmentSession)
+    .where(
+      and(
+        eq(assessmentSession.questionnaireVersionId, activeVersion.id),
+        eq(assessmentSession.status, "in_progress"),
+        eq(assessmentSession.userId, userId),
+      ),
+    )
+    .orderBy(desc(assessmentSession.updatedAt));
+
+  return sessions;
+}
+
+/**
+ * Get user session IDs for a questionnaire
+ * Returns lightweight session data (just IDs) for completed sessions
+ * Used for syncing client-side state with server
+ */
+export async function getUserSessionIds(
+  db: typeof DbInstance,
+  questionnaireId: string,
+  userId: string,
+) {
+  // Get active version for this questionnaire
+  const activeVersion = await db.query.questionnaireVersion.findFirst({
+    where: and(
+      eq(questionnaireVersion.questionnaireId, questionnaireId),
+      eq(questionnaireVersion.isActive, true),
+    ),
+  });
+
+  if (!activeVersion) {
+    return { sessions: [] };
+  }
+
+  // Get user's completed sessions for this questionnaire version
+  const sessions = await db
+    .select({
+      id: assessmentSession.id,
+    })
+    .from(assessmentSession)
+    .where(
+      and(
+        eq(assessmentSession.questionnaireVersionId, activeVersion.id),
+        eq(assessmentSession.status, "completed"),
+        eq(assessmentSession.userId, userId),
+      ),
+    )
+    .orderBy(desc(assessmentSession.completedAt));
+
+  return { sessions };
+}

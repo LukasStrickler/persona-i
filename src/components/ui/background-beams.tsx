@@ -2,9 +2,32 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 
-// SVG path data for background beams
+/**
+ * Configuration constants for the BackgroundBeams component
+ */
+const CONFIG = {
+  DEFAULT_PATH_COUNT: 16,
+  LOW_PERFORMANCE_PATH_COUNT: 6,
+  PATH_FILTER_STEP: 4, // Keep every Nth path for performance
+  ANIMATION: {
+    MIN_DURATION: 20,
+    // Original: Math.random() * 25 + 15 gives range 15-40, then Math.max(..., 20) gives 20-40
+    DURATION_RANGE: { min: 15, max: 40 }, // Range before clamping
+    // Original: Math.random() * -10 gives range -10 to 0
+    DELAY_RANGE: { min: -10, max: 0 },
+    // Original: Math.min(85 + Math.random() * 20, 99) gives range 85-99
+    Y2_RANGE: { min: 85, max: 99 },
+  },
+  INTERSECTION: {
+    THRESHOLD: 0.1,
+  },
+} as const;
+
+/**
+ * SVG path data for background beams
+ * These paths define the beam trajectories
+ */
 const BEAM_PATHS = [
   "M-380 -189C-380 -189 -312 216 152 343C616 470 684 875 684 875",
   "M-373 -197C-373 -197 -305 208 159 335C623 462 691 867 691 867",
@@ -66,107 +89,202 @@ const BEAM_PATHS = [
   "M19 -645C19 -645 87 -240 551 -113C1015 14 1083 419 1083 419",
 ] as const;
 
-export const BackgroundBeams = React.memo(
+/**
+ * Props for the BackgroundBeams component
+ */
+export interface BackgroundBeamsProps {
+  /** Additional CSS classes to apply to the container */
+  className?: string;
+  /** Number of beam paths to render (default: 16) */
+  pathCount?: number;
+  /** Enable low performance mode to reduce path count (default: false) */
+  lowPerformanceMode?: boolean;
+  /** Force mobile styles regardless of viewport size (default: false) */
+  forceMobile?: boolean;
+  /** Use absolute positioning instead of fixed (for constrained containers) (default: false) */
+  useAbsolute?: boolean;
+}
+
+/**
+ * Type for a single animated path item
+ */
+interface PathItem {
+  path: string;
+  duration: number;
+  delay: number;
+  y2Value: number;
+}
+
+/**
+ * BackgroundBeams component - Animated decorative background with moving beams
+ *
+ * @example
+ * ```tsx
+ * <BackgroundBeams pathCount={16} lowPerformanceMode={false} />
+ * ```
+ */
+export const BackgroundBeams = React.memo<BackgroundBeamsProps>(
   ({
     className,
-    pathCount = 16, // Reduced from 20 to 16
-    lowPerformanceMode = false, // Added low performance mode
-  }: {
-    className?: string;
-    pathCount?: number;
-    lowPerformanceMode?: boolean;
+    pathCount = CONFIG.DEFAULT_PATH_COUNT,
+    lowPerformanceMode = false,
+    forceMobile = false,
+    useAbsolute = false,
   }) => {
-    const isMobile = useIsMobile();
     const containerRef = useRef<HTMLDivElement>(null);
     const [isVisible, setIsVisible] = useState(false);
 
-    // Set up intersection observer to only animate when visible
+    /**
+     * Set up intersection observer to only animate when visible
+     * This improves performance by pausing animations when off-screen
+     */
     useEffect(() => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]) {
-            setIsVisible(entries[0].isIntersecting);
-          }
-        },
-        { threshold: 0.1 },
-      );
-
       const container = containerRef.current;
       if (!container) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry) {
+            setIsVisible(entry.isIntersecting);
+          }
+        },
+        { threshold: CONFIG.INTERSECTION.THRESHOLD },
+      );
 
       observer.observe(container);
 
       return () => {
-        if (container && observer) {
-          observer.unobserve(container);
-        }
+        observer.unobserve(container);
       };
     }, []);
 
-    // Pre-calculate paths and random values outside of render
-    const pathItems = useMemo(() => {
-      // Reduce number of paths to improve performance
-      const items = [];
+    /**
+     * Generate random animation duration within configured range
+     * Matches original: Math.max(Math.random() * 25 + 15, 20)
+     * This gives a range of 20-40 seconds
+     */
+    const generateDuration = (): number => {
+      // Original formula: Math.random() * 25 + 15
+      // This gives range 15-40, then clamped to minimum 20
+      const { min, max } = CONFIG.ANIMATION.DURATION_RANGE;
+      const randomDuration = Math.random() * (max - min) + min;
+      return Math.max(randomDuration, CONFIG.ANIMATION.MIN_DURATION);
+    };
 
-      // Original paths array
-      let allPaths = [...BEAM_PATHS];
+    /**
+     * Generate random animation delay
+     */
+    const generateDelay = (): number => {
+      const { min, max } = CONFIG.ANIMATION.DELAY_RANGE;
+      return Math.random() * (max - min) + min;
+    };
 
-      // Keep only every 4th path (increased filter from 3 to 4)
-      allPaths = allPaths.filter((_, index) => index % 4 === 0);
+    /**
+     * Generate random Y2 value for gradient animation
+     * Original: Math.min(85 + Math.random() * 20, 99)
+     * This gives range 85-99
+     */
+    const generateY2Value = (): number => {
+      // Original formula: Math.min(85 + Math.random() * 20, 99)
+      const { min, max } = CONFIG.ANIMATION.Y2_RANGE;
+      return Math.min(min + Math.random() * (max - min), max);
+    };
 
-      // If in low performance mode, reduce path count further
+    /**
+     * Pre-calculate paths and random values outside of render
+     * This memoization ensures paths are only recalculated when dependencies change
+     */
+    const pathItems = useMemo<PathItem[]>(() => {
+      // Filter paths for performance (keep every Nth path)
+      const filteredPaths = BEAM_PATHS.filter(
+        (_, index) => index % CONFIG.PATH_FILTER_STEP === 0,
+      );
+
+      // Determine effective path count based on performance mode
       const effectivePathCount = lowPerformanceMode
-        ? Math.min(6, pathCount)
+        ? Math.min(CONFIG.LOW_PERFORMANCE_PATH_COUNT, pathCount)
         : pathCount;
 
-      // Take every n-th element based on pathCount parameter
+      // Calculate step size to evenly distribute paths
       const step = Math.max(
         1,
-        Math.floor(allPaths.length / effectivePathCount),
+        Math.floor(filteredPaths.length / effectivePathCount),
       );
-      for (let i = 0; i < allPaths.length; i += step) {
-        if (items.length < effectivePathCount) {
-          // Increase durations to reduce calculation frequency
-          items.push({
-            path: allPaths[i],
-            duration: Math.max(Math.random() * 25 + 15, 20), // Increased from 20+10 to 25+15
-            delay: Math.random() * -10,
-            y2Value: Math.min(85 + Math.random() * 20, 99),
-          });
-        }
+
+      // Generate path items with animation properties
+      const items: PathItem[] = [];
+      for (let i = 0; i < filteredPaths.length; i += step) {
+        if (items.length >= effectivePathCount) break;
+
+        const path = filteredPaths[i];
+        if (!path) continue;
+
+        // Use exact original formulas to ensure identical behavior
+        items.push({
+          path,
+          duration: Math.max(Math.random() * 25 + 15, 20), // Original: range 20-40 seconds
+          delay: Math.random() * -10, // Original: range -10 to 0
+          y2Value: Math.min(85 + Math.random() * 20, 99), // Original: range 85-99
+        });
       }
 
       return items;
     }, [pathCount, lowPerformanceMode]);
 
+    /**
+     * Get container positioning classes based on useAbsolute prop
+     */
+    const containerPositionClass = useAbsolute
+      ? "absolute inset-0"
+      : "fixed inset-0";
+
+    /**
+     * Get SVG sizing classes based on positioning mode
+     * Container-relative units for absolute positioning, viewport units for fixed
+     */
+    const svgSizeClasses = useAbsolute
+      ? "h-full w-[150%] xl:w-[95%]"
+      : "h-[100vh] w-[150vw] xl:h-[100vh] xl:w-[95vw]";
+
+    /**
+     * Get SVG transform classes based on mobile/desktop mode
+     */
+    const svgTransformClasses = cn(
+      // Base positioning
+      "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+      // Mobile (default) transforms: rotate 90deg, scale 1.5
+      "rotate-90 scale-150",
+      // Desktop (md+) transforms: rotate 0, scale 1.2 (only if not forcing mobile)
+      !forceMobile ? "md:rotate-0 md:scale-[1.2]" : undefined,
+    );
+
     return (
       <div
         ref={containerRef}
         className={cn(
-          "pointer-events-none fixed inset-0 flex h-full w-full items-center justify-center overflow-hidden [mask-size:40px] [mask-repeat:no-repeat]",
+          "pointer-events-none flex h-full w-full items-center justify-center overflow-hidden [mask-size:40px] [mask-repeat:no-repeat]",
+          containerPositionClass,
           className,
         )}
         style={{
-          // Add hardware acceleration
+          // Enable hardware acceleration for smoother animations
           transform: "translateZ(0)",
           willChange: "transform",
         }}
       >
         <svg
-          className="pointer-events-none absolute z-0 h-[100vh] w-[150vw] xl:h-[100vh] xl:w-[95vw]"
+          className={cn(
+            "pointer-events-none absolute z-0",
+            svgSizeClasses,
+            svgTransformClasses,
+          )}
           width="100%"
           height="100%"
           viewBox="0 0 696 316"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: isMobile
-              ? "translate(-50%, -50%) rotate(90deg) scale(1.5)"
-              : "translate(-50%, -50%) scale(1.2)",
-          }}
+          aria-hidden="true"
         >
           <path
             d="M-380 -189C-380 -189 -312 216 152 343C616 470 684 875 684 875M-373 -197C-373 -197 -305 208 159 335C623 462 691 867 691 867M-366 -205C-366 -205 -298 200 166 327C630 454 698 859 698 859M-359 -213C-359 -213 -291 192 173 319C637 446 705 851 705 851M-352 -221C-352 -221 -284 184 180 311C644 438 712 843 712 843M-345 -229C-345 -229 -277 176 187 303C651 430 719 835 719 835M-338 -237C-338 -237 -270 168 194 295C658 422 726 827 726 827M-331 -245C-331 -245 -263 160 201 287C665 414 733 819 733 819M-324 -253C-324 -253 -256 152 208 279C672 406 740 811 740 811M-317 -261C-317 -261 -249 144 215 271C679 398 747 803 747 803M-310 -269C-310 -269 -242 136 222 263C686 390 754 795 754 795M-303 -277C-303 -277 -235 128 229 255C693 382 761 787 761 787M-296 -285C-296 -285 -228 120 236 247C700 374 768 779 768 779M-289 -293C-289 -293 -221 112 243 239C707 366 775 771 775 771M-282 -301C-282 -301 -214 104 250 231C714 358 782 763 782 763M-275 -309C-275 -309 -207 96 257 223C721 350 789 755 789 755M-268 -317C-268 -317 -200 88 264 215C728 342 796 747 796 747M-261 -325C-261 -325 -193 80 271 207C735 334 803 739 803 739M-254 -333C-254 -333 -186 72 278 199C742 326 810 731 810 731M-247 -341C-247 -341 -179 64 285 191C749 318 817 723 817 723M-240 -349C-240 -349 -172 56 292 183C756 310 824 715 824 715M-233 -357C-233 -357 -165 48 299 175C763 302 831 707 831 707M-226 -365C-226 -365 -158 40 306 167C770 294 838 699 838 699M-219 -373C-219 -373 -151 32 313 159C777 286 845 691 845 691M-212 -381C-212 -381 -144 24 320 151C784 278 852 683 852 683M-205 -389C-205 -389 -137 16 327 143C791 270 859 675 859 675M-198 -397C-198 -397 -130 8 334 135C798 262 866 667 866 667M-191 -405C-191 -405 -123 0 341 127C805 254 873 659 873 659M-184 -413C-184 -413 -116 -8 348 119C812 246 880 651 880 651M-177 -421C-177 -421 -109 -16 355 111C819 238 887 643 887 643M-170 -429C-170 -429 -102 -24 362 103C826 230 894 635 894 635M-163 -437C-163 -437 -95 -32 369 95C833 222 901 627 901 627M-156 -445C-156 -445 -88 -40 376 87C840 214 908 619 908 619M-149 -453C-149 -453 -81 -48 383 79C847 206 915 611 915 611M-142 -461C-142 -461 -74 -56 390 71C854 198 922 603 922 603M-135 -469C-135 -469 -67 -64 397 63C861 190 929 595 929 595M-128 -477C-128 -477 -60 -72 404 55C868 182 936 587 936 587M-121 -485C-121 -485 -53 -80 411 47C875 174 943 579 943 579M-114 -493C-114 -493 -46 -88 418 39C882 166 950 571 950 571M-107 -501C-107 -501 -39 -96 425 31C889 158 957 563 957 563M-100 -509C-100 -509 -32 -104 432 23C896 150 964 555 964 555M-93 -517C-93 -517 -25 -112 439 15C903 142 971 547 971 547M-86 -525C-86 -525 -18 -120 446 7C910 134 978 539 978 539M-79 -533C-79 -533 -11 -128 453 -1C917 126 985 531 985 531M-72 -541C-72 -541 -4 -136 460 -9C924 118 992 523 992 523M-65 -549C-65 -549 3 -144 467 -17C931 110 999 515 999 515M-58 -557C-58 -557 10 -152 474 -25C938 102 1006 507 1006 507M-51 -565C-51 -565 17 -160 481 -33C945 94 1013 499 1013 499M-44 -573C-44 -573 24 -168 488 -41C952 86 1020 491 1020 491M-37 -581C-37 -581 31 -176 495 -49C959 78 1027 483 1027 483M-30 -589C-30 -589 38 -184 502 -57C966 70 1034 475 1034 475M-23 -597C-23 -597 45 -192 509 -65C973 62 1041 467 1041 467M-16 -605C-16 -605 52 -200 516 -73C980 54 1048 459 1048 459M-9 -613C-9 -613 59 -208 523 -81C987 46 1055 451 1055 451M-2 -621C-2 -621 66 -216 530 -89C994 38 1062 443 1062 443M5 -629C5 -629 73 -224 537 -97C1001 30 1069 435 1069 435M12 -637C12 -637 80 -232 544 -105C1008 22 1076 427 1076 427M19 -645C19 -645 87 -240 551 -113C1015 14 1083 419 1083 419"
@@ -175,17 +293,19 @@ export const BackgroundBeams = React.memo(
             strokeWidth="0.5"
           ></path>
 
+          {/* Render animated beam paths only when visible */}
           {isVisible &&
             pathItems.map((item, index) => (
               <motion.path
-                key={`path-` + index}
+                key={`beam-path-${index}`}
                 d={item.path}
                 stroke={`url(#linearGradient-${index})`}
                 strokeOpacity="0.8"
                 strokeWidth="0.8"
-              ></motion.path>
+              />
             ))}
           <defs>
+            {/* Gradient definitions for beam animations */}
             {isVisible &&
               pathItems.map((item, index) => (
                 <motion.linearGradient
@@ -205,22 +325,19 @@ export const BackgroundBeams = React.memo(
                   }}
                   transition={{
                     duration: item.duration,
-                    ease: "linear", // Changed from easeInOut to linear (simpler calculation)
+                    ease: "linear", // Linear easing for consistent animation
                     repeat: Infinity,
                     delay: item.delay,
                   }}
                 >
-                  {/* head */}
-                  <stop stopColor="#18CCFC" stopOpacity="0"></stop>
-                  <stop stopColor="#18CCFC"></stop>
-                  {/* body */}
-                  <stop offset="32.5%" stopColor="#6344F5"></stop>
-                  {/* tail */}
-                  <stop
-                    offset="100%"
-                    stopColor="#AE48FF"
-                    stopOpacity="0"
-                  ></stop>
+                  {/* Gradient head - transparent start */}
+                  <stop stopColor="#18CCFC" stopOpacity="0" />
+                  {/* Gradient head - bright cyan */}
+                  <stop stopColor="#18CCFC" />
+                  {/* Gradient body - purple transition */}
+                  <stop offset="32.5%" stopColor="#6344F5" />
+                  {/* Gradient tail - transparent end */}
+                  <stop offset="100%" stopColor="#AE48FF" stopOpacity="0" />
                 </motion.linearGradient>
               ))}
 

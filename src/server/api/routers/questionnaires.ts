@@ -250,4 +250,56 @@ export const questionnairesRouter = createTRPCRouter({
         userId: ctx.user.id,
       });
     }),
+
+  /**
+   * Complete an assessment session
+   * Marks the session as completed and sets the completedAt timestamp
+   */
+  completeSession: protectedProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await sessionQueries.completeAssessmentSession(
+        ctx.db,
+        input.sessionId,
+        ctx.user.id,
+      );
+
+      return {
+        success: true,
+        session: {
+          id: session.id,
+          status: session.status,
+          completedAt: session.completedAt,
+        },
+      };
+    }),
+
+  /**
+   * Get incomplete sessions for the current user and questionnaire
+   * Returns sessions with status "in_progress" for the given questionnaire
+   */
+  getIncompleteSessions: protectedProcedure
+    .input(z.object({ questionnaireId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return sessionQueries.getIncompleteSessions(
+        ctx.db,
+        input.questionnaireId,
+        ctx.user.id,
+      );
+    }),
+
+  /**
+   * Get user session IDs for a questionnaire
+   * Returns lightweight session data (just IDs) for completed sessions
+   * Used for syncing client-side state with server
+   */
+  getUserSessionIds: protectedProcedure
+    .input(z.object({ questionnaireId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return sessionQueries.getUserSessionIds(
+        ctx.db,
+        input.questionnaireId,
+        ctx.user.id,
+      );
+    }),
 });

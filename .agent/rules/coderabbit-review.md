@@ -12,44 +12,50 @@ Use CodeRabbit CLI for targeted, iterative code reviews after significant implem
 ## When to run reviews:
 
 - ✅ After big implementations or feature additions
-- ✅ Before creating PRs (use PR review)
-- ✅ After significant uncommitted changes (use task review)
+- ✅ Before creating PRs (use pr mode)
+- ✅ After significant uncommitted changes (use task mode)
 - ❌ Don't run for minor changes or refactoring
 
 ## Review types:
 
-- **Task review** (`bun run review:task`): Reviews uncommitted files in working directory (includes both staged and unstaged)
-- **PR review** (`bun run review:pr`): Reviews all files differing from main branch (committed + uncommitted)
+- **Task review** (`/code-review` in task mode): Reviews uncommitted files in working directory (includes both staged and unstaged)
+- **PR review** (`/code-review` in pr mode): Reviews all files differing from main branch (committed + uncommitted)
 
 ## Running reviews:
 
 **⚠️ CRITICAL: When asked to run a review, you MUST:**
 
-- ✅ **Actually execute** `bun run review:task` or `bun run review:pr` (never skip running the external review)
+- ✅ **Actually invoke** `/code-review` skill with appropriate mode (task or pr)
 - ✅ **Wait for completion** - let the review run fully to completion (no timeouts, no early termination)
-- ✅ **Then read** the review using `bun run review:read` after it completes
-- ❌ **Never skip** running the external review itself unless explicitly told to skip it
+- ✅ **Review output** - The skill returns formatted review results directly
+- ❌ **Never skip** invoking the skill unless explicitly told to skip it
 - ❌ **Never timeout** or interrupt the review process - reviews can take several minutes
 
-The review command will run CodeRabbit CLI which analyzes your code. This is an external process that must complete before reading results.
+The `/code-review` skill provides the same functionality as the previous `review-*.sh` scripts and automatically handles:
+
+- Running CodeRabbit CLI analysis
+- Formatting output with comprehensive statistics
+- Issue type categorization
 
 ## Iterative workflow:
 
-1. **Run Review:** Execute `bun run review:task` or `bun run review:pr` and **wait for it to complete**
-2. **Read Review:** **Always use `bun run review:read`** to see latest review with statistics and issue types (don't use file explorer)
+1. **Run Review:** Invoke `/code-review` skill with appropriate mode (task or pr)
+2. **Review Output:** The skill returns formatted review results with statistics and issue types
 3. **Fix Issues:** Focus on high-priority issue types first (e.g., `potential_issue` before `refactor_suggestion`)
 4. **Iterate:** Repeat steps 1-3 up to 3 times if needed to refine code
 5. **Finalize:** Run `bun run agent:finalize` after fixes to ensure code quality
 
 ## Review output:
 
-- Reviews saved to `.coderabbit/{type}-review-{timestamp}.md`
-- Metadata with enhanced statistics saved to `.coderabbit/{type}-review-{timestamp}.json`
-- **Always use `bun run review:read` to read reviews** (automatically finds the latest file and displays formatted output)
+The `/code-review` skill automatically:
 
-## Enhanced statistics:
+- Saves reviews to `.coderabbit/{type}-review-{timestamp}.md`
+- Saves metadata with enhanced statistics to `.coderabbit/{type}-review-{timestamp}.json`
+- Returns formatted review results with statistics and issue types directly
 
-The review metadata includes comprehensive statistics:
+## Statistics provided:
+
+The skill automatically includes comprehensive statistics:
 
 - **Files reviewed**: Number of files analyzed
 - **Issue types**: Number of unique issue types found
@@ -58,7 +64,7 @@ The review metadata includes comprehensive statistics:
 
 ## Dynamic issue types:
 
-CodeRabbit dynamically detects and categorizes all issue types from the review:
+The skill automatically detects and categorizes all issue types:
 
 - **Type detection**: Automatically extracts all unique issue types (e.g., `potential_issue`, `refactor_suggestion`)
 - **Type counts**: Shows count for each issue type found
@@ -66,17 +72,17 @@ CodeRabbit dynamically detects and categorizes all issue types from the review:
 
 ## Issue prioritization:
 
-Use the issue types to prioritize fixes:
+Use issue types to prioritize fixes:
 
 - **`potential_issue`**: Should fix (medium-high severity) - address these first
 - **`refactor_suggestion`**: Consider fixing (medium severity) - improve code quality
 - **Other types**: Review on a case-by-case basis based on context
 
-The statistics help you understand the scope and prioritize fixes effectively.
-
 ## Validation and critical thinking:
 
 **⚠️ IMPORTANT: Do NOT blindly fix every suggestion from the reviewer.**
+
+The `/code-review` skill automatically handles CodeRabbit CLI execution and provides structured output. Review critical thinking still applies when interpreting and applying suggestions.
 
 Before applying any fix, validate that it's actually an issue worth fixing:
 
@@ -103,11 +109,17 @@ Before applying any fix, validate that it's actually an issue worth fixing:
 - ✅ Check issue types to understand what needs attention
 - ✅ Consult `.docs/DOCUMENTATION_GUIDE.md` if review suggests doc updates
 
+## Skill Usage:
+
+The `/code-review` skill provides the same functionality as the previous `review-*.sh` scripts:
+
+- Automatically detects and categorizes issue types
+- Returns formatted output with statistics
+- Supports both task mode (uncommitted files) and PR mode (vs main branch)
+- Handles rate limiting and authentication internally
+
 ## Troubleshooting:
 
-- **CodeRabbit CLI not found:** Install with `npm install -g @coderabbitai/cli`
-- **Rate limit exceeded:** Wait for the specified time (usually 5-10 minutes) before retrying
-- **Too many files error:** Commit some files first or upgrade to Pro plan (100 file limit)
-- **No review files found:** Run a review first with `bun run review:task` or `bun run review:pr`
-- **Authentication error:** Run `coderabbit auth login`
-- **Metadata file not found:** Review may have failed - check the review markdown file for errors
+- **Review not available:** Ensure CodeRabbit CLI is installed (`npm install -g @coderabbitai/cli`)
+- **Rate limit exceeded:** Wait 5-10 minutes before retrying
+- **Authentication error:** Ensure proper authentication setup for CodeRabbit CLI

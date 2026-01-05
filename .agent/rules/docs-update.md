@@ -12,7 +12,7 @@ When making code changes, ensure documentation is updated accordingly.
 ## Workflow:
 
 1. Run `agent:finalize` first (verify code quality)
-2. Run `docs:check` separately (review categorized changes)
+2. **Use `/docs-check` skill** to check documentation needs (review categorized changes)
 3. Use exploratory file finding to locate relevant docs in `.docs/`
 4. Update documentation following the guide's principles
 
@@ -29,7 +29,7 @@ When making code changes, ensure documentation is updated accordingly.
 ## PR checklist:
 
 - [ ] `agent:finalize` passed
-- [ ] `docs:check` reviewed
+- [ ] Documentation check reviewed (using `/docs-check` skill)
 - [ ] Relevant docs updated in `.docs/`
 - [ ] PlantUML diagrams updated (if schemas/workflows changed)
 - [ ] Cross-references added between related docs

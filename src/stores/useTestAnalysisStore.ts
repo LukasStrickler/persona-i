@@ -11,6 +11,7 @@ import {
   type ResponseValueType,
 } from "@/lib/utils/response-value";
 import { createVanillaTRPCClient } from "@/lib/trpc-client";
+import { authClient } from "@/lib/auth-client";
 
 // Enable Immer MapSet plugin for Maps and Sets support
 enableMapSet();
@@ -429,6 +430,52 @@ export function createTestAnalysisStore(slug: string) {
   return store;
 }
 
+/**
+ * Helper to filter valid user sessions
+ * Filters out completed sessions with no responses
+ * Keeps in-progress sessions even if they have no responses yet
+ */
+function getValidUserSessions(
+  sessions: Map<string, SessionResponses>,
+): SessionResponses[] {
+  return Array.from(sessions.values()).filter(
+    (s) => s.responses.size > 0 || !s.completedAt,
+  );
+}
+
+/**
+ * Check if error is an UNAUTHORIZED error from tRPC
+ */
+function isUnauthorizedError(
+  error: unknown,
+): error is { data: { code: string } } {
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "data" in error &&
+    error.data !== null &&
+    typeof error.data === "object" &&
+    "code" in error.data &&
+    error.data.code === "UNAUTHORIZED"
+  );
+}
+
+/**
+ * Helper to track sync errors
+ */
+function trackSyncError(
+  errors: Map<string, { count: number; lastError: Date }>,
+  questionnaireId: string,
+): { count: number; lastError: Date } {
+  const errorInfo = errors.get(questionnaireId) ?? {
+    count: 0,
+    lastError: new Date(),
+  };
+  errorInfo.count++;
+  errorInfo.lastError = new Date();
+  return errorInfo;
+}
+
 function createStore(slug: string) {
   const storageKey = `test-analysis-${slug}`;
   const customStorage = createCustomStorage(slug);
@@ -680,15 +727,23 @@ function createStore(slug: string) {
           addUserSession: (session) => {
             set((state) => {
               state.userSessions.set(session.sessionId, session);
-              const allUserResponses = Array.from(state.userSessions.values());
+              const validSessions = getValidUserSessions(state.userSessions);
 
-              // Auto-select the newest session (smart default)
-              state.selection.selectedUserSessionIds = new Set([
-                session.sessionId,
-              ]);
-              state.filteredUserResponses = allUserResponses.filter(
-                (s) => s.sessionId === session.sessionId,
-              );
+              // Only auto-select if session is valid (has responses or is in-progress)
+              const isSessionValid =
+                session.responses.size > 0 || !session.completedAt;
+              if (isSessionValid) {
+                state.selection.selectedUserSessionIds = new Set([
+                  session.sessionId,
+                ]);
+                state.filteredUserResponses = validSessions.filter(
+                  (s) => s.sessionId === session.sessionId,
+                );
+              } else {
+                // Session has no responses and is completed - don't select it
+                // But update filtered list to exclude it
+                state.filteredUserResponses = validSessions;
+              }
 
               if (state.cacheMeta) {
                 state.cacheMeta.userSessionsLastCheckedAt = Date.now();
@@ -702,6 +757,32 @@ function createStore(slug: string) {
 
           // Check for new user sessions (lightweight)
           checkForNewUserSessions: async (questionnaireId) => {
+            // Validate questionnaireId before making the request
+            if (
+              !questionnaireId ||
+              typeof questionnaireId !== "string" ||
+              questionnaireId.trim() === ""
+            ) {
+              console.warn(
+                "checkForNewUserSessions called with invalid questionnaireId:",
+                questionnaireId,
+              );
+              return [];
+            }
+
+            // Check authentication before calling protected procedure
+            try {
+              const sessionResponse = await authClient.getSession();
+              const user = sessionResponse.data?.user;
+              if (!user) {
+                // User not authenticated - return empty array (blocked state)
+                return [];
+              }
+            } catch {
+              // Auth check failed - user not authenticated
+              return [];
+            }
+
             try {
               const trpcClient = createVanillaTRPCClient();
               const result =
@@ -719,23 +800,22 @@ function createStore(slug: string) {
               const { userSessions } = get();
 
               // Return IDs we don't have
-              const missingIds: string[] = [];
-              for (const id of serverSessionIds) {
-                if (typeof id === "string" && !userSessions.has(id)) {
-                  missingIds.push(id);
-                }
-              }
-              return missingIds;
+              return Array.from(serverSessionIds).filter(
+                (id) => typeof id === "string" && !userSessions.has(id),
+              );
             } catch (error) {
+              // Handle UNAUTHORIZED errors gracefully (user not logged in)
+              if (isUnauthorizedError(error)) {
+                return [];
+              }
+
               console.error("Failed to check for new user sessions:", error);
-              // Track error
+              // Track error for other types of failures
               set((state) => {
-                const errorInfo = state._syncErrors.get(questionnaireId) ?? {
-                  count: 0,
-                  lastError: new Date(),
-                };
-                errorInfo.count++;
-                errorInfo.lastError = new Date();
+                const errorInfo = trackSyncError(
+                  state._syncErrors,
+                  questionnaireId,
+                );
                 state._syncErrors.set(questionnaireId, errorInfo);
               });
               return [];
@@ -759,6 +839,10 @@ function createStore(slug: string) {
                       sessionId,
                     });
                   } catch (error) {
+                    // Handle UNAUTHORIZED errors gracefully (user not logged in)
+                    if (isUnauthorizedError(error)) {
+                      return null;
+                    }
                     console.error(
                       `Failed to fetch session ${sessionId}:`,
                       error,
@@ -838,25 +922,39 @@ function createStore(slug: string) {
 
           // Main sync with mutex/lock
           syncUserSessions: async (questionnaireId) => {
+            // Validate questionnaireId before proceeding
+            if (
+              !questionnaireId ||
+              typeof questionnaireId !== "string" ||
+              questionnaireId.trim() === ""
+            ) {
+              console.warn(
+                "syncUserSessions called with invalid questionnaireId:",
+                questionnaireId,
+              );
+              return;
+            }
+
             const state = get();
 
-            // Prevent concurrent syncs
-            if (state._syncInProgress) {
+            // Helper to queue questionnaire if not already queued
+            const queueIfNotExists = () => {
               set((s) => {
                 if (!s._syncQueue.includes(questionnaireId)) {
                   s._syncQueue.push(questionnaireId);
                 }
               });
+            };
+
+            // Prevent concurrent syncs
+            if (state._syncInProgress) {
+              queueIfNotExists();
               return;
             }
 
             // Check if offline
             if (!state._isOnline) {
-              set((s) => {
-                if (!s._syncQueue.includes(questionnaireId)) {
-                  s._syncQueue.push(questionnaireId);
-                }
-              });
+              queueIfNotExists();
               return;
             }
 
@@ -879,12 +977,10 @@ function createStore(slug: string) {
               const err =
                 error instanceof Error ? error : new Error(String(error));
               console.error("syncUserSessions failed:", err);
-              const errorInfo = get()._syncErrors.get(questionnaireId) ?? {
-                count: 0,
-                lastError: new Date(),
-              };
-              errorInfo.count++;
-              errorInfo.lastError = new Date();
+              const errorInfo = trackSyncError(
+                get()._syncErrors,
+                questionnaireId,
+              );
 
               set((s) => {
                 s._syncErrors.set(questionnaireId, errorInfo);
@@ -943,19 +1039,16 @@ function createStore(slug: string) {
 
           setUserSessionSelection: (sessionIds) => {
             set((state) => {
+              const validSessions = getValidUserSessions(state.userSessions);
+
               if (sessionIds.length === 0) {
                 // Fallback to latest completed session (smart default)
-                const allUserResponses = Array.from(
-                  state.userSessions.values(),
-                );
-
-                if (allUserResponses.length === 0) {
-                  // No sessions available
+                if (validSessions.length === 0) {
                   state.selection.selectedUserSessionIds = new Set();
                   state.filteredUserResponses = [];
                 } else {
                   // Try to find latest completed session first
-                  const latestCompleted = [...allUserResponses]
+                  const latestCompleted = [...validSessions]
                     .filter((s) => s.completedAt)
                     .sort(
                       (a, b) =>
@@ -963,33 +1056,21 @@ function createStore(slug: string) {
                         (a.completedAt?.getTime() ?? 0),
                     )[0];
 
-                  if (latestCompleted) {
+                  const selectedSession = latestCompleted ?? validSessions[0];
+                  if (selectedSession) {
                     state.selection.selectedUserSessionIds = new Set([
-                      latestCompleted.sessionId,
+                      selectedSession.sessionId,
                     ]);
-                    state.filteredUserResponses = allUserResponses.filter(
-                      (s) => s.sessionId === latestCompleted.sessionId,
-                    );
+                    state.filteredUserResponses = [selectedSession];
                   } else {
-                    // Fallback: select most recent session by insertion order
-                    const mostRecent = allUserResponses[0];
-                    if (mostRecent) {
-                      state.selection.selectedUserSessionIds = new Set([
-                        mostRecent.sessionId,
-                      ]);
-                      state.filteredUserResponses = [mostRecent];
-                    } else {
-                      // Should not happen, but defensive
-                      state.selection.selectedUserSessionIds = new Set();
-                      state.filteredUserResponses = [];
-                    }
+                    // Should not happen, but defensive
+                    state.selection.selectedUserSessionIds = new Set();
+                    state.filteredUserResponses = [];
                   }
                 }
               } else {
                 state.selection.selectedUserSessionIds = new Set(sessionIds);
-                state.filteredUserResponses = Array.from(
-                  state.userSessions.values(),
-                ).filter((s) =>
+                state.filteredUserResponses = validSessions.filter((s) =>
                   state.selection.selectedUserSessionIds.has(s.sessionId),
                 );
               }

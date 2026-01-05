@@ -1,5 +1,5 @@
 import { Geist } from "next/font/google";
-import { type Metadata } from "next";
+import { type Metadata, type Viewport } from "next";
 import { TRPCReactProvider } from "@/components/providers/TRPCProvider";
 import { NameCheckProvider } from "@/components/providers/NameCheckProvider";
 import { ToastProvider } from "@/components/providers/ToastProvider";
@@ -72,6 +72,13 @@ export const metadata: Metadata = {
     // yandex: "your-yandex-verification-code",
     // bing: "your-bing-verification-code",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

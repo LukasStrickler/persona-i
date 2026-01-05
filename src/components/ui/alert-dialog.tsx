@@ -6,9 +6,30 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-function AlertDialog({
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
+type AlertDialogProps = React.ComponentProps<
+  typeof AlertDialogPrimitive.Root
+> & {
+  /**
+   * Allow disabling modal behavior in special contexts (e.g., inline Storybook stories).
+   * Defaults to Radix's modal behavior when undefined.
+   */
+  modal?: boolean;
+};
+
+type AlertDialogContentProps = React.ComponentProps<
+  typeof AlertDialogPrimitive.Content
+> & {
+  /**
+   * Optional portal container to render into instead of document.body.
+   */
+  portalContainer?: HTMLElement | null;
+  /**
+   * Skip rendering the overlay (useful for inline previews).
+   */
+  hideOverlay?: boolean;
+};
+
+function AlertDialog({ ...props }: AlertDialogProps) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
 }
 
@@ -46,11 +67,13 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
+  portalContainer,
+  hideOverlay = false,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: AlertDialogContentProps) {
   return (
-    <AlertDialogPortal>
-      <AlertDialogOverlay />
+    <AlertDialogPortal container={portalContainer}>
+      {!hideOverlay && <AlertDialogOverlay />}
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(

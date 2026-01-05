@@ -34,6 +34,7 @@ export function MainHeader() {
   const [user, setUser] = useState<{ name?: string; email?: string } | null>(
     null,
   );
+  const [mounted, setMounted] = useState(false);
 
   const checkSession = async () => {
     try {
@@ -58,6 +59,8 @@ export function MainHeader() {
   };
 
   useEffect(() => {
+    // Mark component as mounted to prevent hydration mismatches with Radix UI
+    setMounted(true);
     void checkSession();
 
     // Listen for session refresh events (e.g., after name update)
@@ -158,85 +161,108 @@ export function MainHeader() {
               </Button>
             )}
             {/* Hamburger menu - always shown on mobile */}
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Open menu"
-                  className="h-10 w-10"
+            {/* Only render Sheet after mount to prevent hydration mismatches with Radix UI IDs */}
+            {mounted && (
+              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Open menu"
+                    className="h-10 w-10"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="right"
+                  className="flex w-[65%] flex-col p-0 sm:w-[400px]"
                 >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="right"
-                className="flex w-[65%] flex-col p-0 sm:w-[400px]"
+                  <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                  <nav
+                    className="flex flex-1 flex-col gap-1 px-6 py-4"
+                    aria-label="Mobile navigation"
+                  >
+                    {navItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="text-foreground hover:text-foreground hover:bg-accent rounded-md px-3 py-2.5 text-base font-medium transition-colors"
+                        onClick={() => setSheetOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </nav>
+                  {/* Account/Sign-in section at bottom */}
+                  <div className="border-t px-6 pt-4 pb-6">
+                    {!isLoading && (
+                      <>
+                        {isAuthenticated && user ? (
+                          <div className="flex flex-col gap-3">
+                            <div className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                              Account
+                            </div>
+                            <Button
+                              variant="outline"
+                              asChild
+                              className="w-full"
+                            >
+                              <Link
+                                href="/account"
+                                onClick={() => setSheetOpen(false)}
+                                className="flex items-center justify-center gap-2"
+                              >
+                                <User className="h-4 w-4" />
+                                {user.name ?? user.email ?? "Account"}
+                              </Link>
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-3">
+                            <div className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                              Get Started
+                            </div>
+                            <Button
+                              variant="outline"
+                              asChild
+                              className="w-full"
+                            >
+                              <Link
+                                href="/login"
+                                onClick={() => setSheetOpen(false)}
+                              >
+                                Sign in
+                              </Link>
+                            </Button>
+                            <Button asChild className="w-full">
+                              <Link
+                                href="/login?mode=signup"
+                                onClick={() => setSheetOpen(false)}
+                              >
+                                Create account
+                              </Link>
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+            {/* Fallback button for SSR - will be replaced by Sheet on mount */}
+            {!mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Open menu"
+                className="h-10 w-10"
+                disabled
               >
-                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-                <nav
-                  className="flex flex-1 flex-col gap-1 px-6 py-4"
-                  aria-label="Mobile navigation"
-                >
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="text-foreground hover:text-foreground hover:bg-accent rounded-md px-3 py-2.5 text-base font-medium transition-colors"
-                      onClick={() => setSheetOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
-                {/* Account/Sign-in section at bottom */}
-                <div className="border-t px-6 pt-4 pb-6">
-                  {!isLoading && (
-                    <>
-                      {isAuthenticated && user ? (
-                        <div className="flex flex-col gap-3">
-                          <div className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                            Account
-                          </div>
-                          <Button variant="outline" asChild className="w-full">
-                            <Link
-                              href="/account"
-                              onClick={() => setSheetOpen(false)}
-                              className="flex items-center justify-center gap-2"
-                            >
-                              <User className="h-4 w-4" />
-                              {user.name ?? user.email ?? "Account"}
-                            </Link>
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-3">
-                          <div className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                            Get Started
-                          </div>
-                          <Button variant="outline" asChild className="w-full">
-                            <Link
-                              href="/login"
-                              onClick={() => setSheetOpen(false)}
-                            >
-                              Sign in
-                            </Link>
-                          </Button>
-                          <Button asChild className="w-full">
-                            <Link
-                              href="/login?mode=signup"
-                              onClick={() => setSheetOpen(false)}
-                            >
-                              Create account
-                            </Link>
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
