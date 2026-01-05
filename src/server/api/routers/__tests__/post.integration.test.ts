@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import {
+  createTestDatabase,
+  closeTestDatabase,
+  type TestDatabase,
+} from "@/test-utils/db";
 import { posts } from "@/server/db/schema";
 
 /**
@@ -17,6 +21,10 @@ describe("Post Database Operations", () => {
   beforeEach(async () => {
     // Create a fresh database for each test (matches isolated test pattern)
     db = await createTestDatabase();
+  });
+
+  afterEach(async () => {
+    await closeTestDatabase(db);
   });
 
   it("should create a post", async () => {

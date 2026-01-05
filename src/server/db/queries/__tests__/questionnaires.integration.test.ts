@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import {
+  createTestDatabase,
+  closeTestDatabase,
+  type TestDatabase,
+} from "@/test-utils/db";
 import {
   questionnaire,
   questionnaireVersion,
@@ -55,6 +59,10 @@ describe("Questionnaire Queries", () => {
         },
       ])
       .onConflictDoNothing();
+  });
+
+  afterEach(async () => {
+    await closeTestDatabase(db);
   });
 
   it("should get public questionnaires with active versions", async () => {

@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import {
+  createTestDatabase,
+  closeTestDatabase,
+  type TestDatabase,
+} from "@/test-utils/db";
 import {
   questionnaire,
   questionnaireVersion,
@@ -29,6 +33,10 @@ describe("Session Queries", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+  });
+
+  afterEach(async () => {
+    await closeTestDatabase(db);
   });
 
   it("should get or create subject profile", async () => {
