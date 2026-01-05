@@ -47,8 +47,10 @@ describe("SpringSlider", () => {
     // Wait for component to fully render and width to be set
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Find the track container (the div that handles pointer events)
-    const trackContainer = container.querySelector("div[class*='relative']")!;
+    // Find the track container using data-testid for stability
+    const trackContainer = container.querySelector(
+      '[data-testid="slider-track"]',
+    )!;
     expect(trackContainer).toBeTruthy();
 
     // Mock getBoundingClientRect

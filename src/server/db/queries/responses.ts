@@ -177,7 +177,7 @@ export async function saveResponsesBatch(
   let savedCount = 0;
   const failed: { questionId: string; error: string }[] = [];
 
-  // Process sequentially to ensure consistency (could be optimized with transactions/batch inserts)
+  // Process all responses within a single transaction to ensure atomicity
   return db.transaction(async (tx) => {
     if (responses.length === 0) {
       throw new Error("Cannot save empty responses array");

@@ -23,9 +23,7 @@ export function getTestDatabaseUrl(): string {
     return testDbUrl;
   }
 
-  // Use a unique temp file database for each test
-  // libsql doesn't support mode=memory, so we use actual temp files
-  // Each test gets a unique file to ensure isolation
+  // Unique temp file per test ensures isolation (libsql supports :memory: but not mode=memory param)
   const uniqueName = generateUniqueDbName();
   const tempPath = join(tmpdir(), `${uniqueName}.db`);
   return `file:${tempPath}`;

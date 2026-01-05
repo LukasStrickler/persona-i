@@ -38,12 +38,12 @@ export async function getOrCreateSubjectProfile(
       updatedAt: now,
     });
 
-    // Priority 3: Fetch the newly created profile from the database to avoid duplicating the schema
+    // Fetch the newly created profile to get the complete record with all fields
     subjectProfileRecord = await db.query.subjectProfile.findFirst({
       where: eq(subjectProfile.id, subjectProfileId),
     });
 
-    // Priority 3: Fallback to manual construction if, for some unexpected reason, the record cannot be fetched
+    // Fallback to manual construction if fetch fails (should not happen in practice)
     subjectProfileRecord ??= {
       id: subjectProfileId,
       subjectType: "human",
