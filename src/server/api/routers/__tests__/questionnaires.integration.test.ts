@@ -6,7 +6,6 @@ import {
   questionnaire,
   questionnaireVersion,
   userQuestionnaireAccess,
-  subjectProfile,
   assessmentSession,
   user,
 } from "@/server/db/schema";

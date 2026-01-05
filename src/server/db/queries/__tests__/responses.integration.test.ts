@@ -7,7 +7,6 @@ import {
   subjectProfile,
   questionBankItem,
   questionnaireItem,
-  response,
   questionType,
   user,
 } from "@/server/db/schema";
