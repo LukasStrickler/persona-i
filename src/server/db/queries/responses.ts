@@ -9,6 +9,7 @@ import {
 } from "@/server/db/schema";
 import type { db as DbInstance } from "@/server/db";
 import { mapResponseValueToData } from "@/server/lib/responses";
+import { logger } from "@/lib/logger";
 
 export async function saveResponse(
   db: typeof DbInstance,
@@ -338,7 +339,11 @@ export async function getModelResponses(
   const allModelProfilesResult = await db
     .select()
     .from(subjectProfile)
-    .where(eq(subjectProfile.subjectType, "llm"));
+    .where(eq(subjectProfile.subjectType, "llm"))
+    .catch((error) => {
+      logger.error("Failed to fetch model profiles:", error);
+      return [];
+    });
 
   const allModelProfiles = Array.isArray(allModelProfilesResult)
     ? allModelProfilesResult
