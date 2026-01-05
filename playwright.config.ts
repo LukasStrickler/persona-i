@@ -48,8 +48,8 @@ export default defineConfig({
     env: {
       // Use in-memory database for E2E tests
       // Note: Tests run sequentially (workers: 1) to ensure database isolation
-      // since in-memory SQLite with shared cache shares state across connections
-      DATABASE_URL: "file::memory:",
+      // Uses ":memory:" for proper isolation (matches integration test pattern)
+      DATABASE_URL: ":memory:",
       DATABASE_TOKEN: "test-token",
       NODE_ENV: "test",
       BETTER_AUTH_SECRET:

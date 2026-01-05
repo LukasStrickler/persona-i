@@ -1,33 +1,64 @@
 name: PR Checks
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # Only run pushes to main (merges), NOT feature branches
   push:
+    branches: [main]
     paths:
       # TypeScript/JavaScript files
-      - '**.ts'
-      - '**.tsx'
-      - '**.js'
-      - '**.jsx'
-      - '**.mjs'
-      - '**.cjs'
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.jsx"
+      - "**.mjs"
+      - "**.cjs"
       # Config files that affect checks
-      - 'tsconfig.json'
-      - 'tsconfig.*.json'
-      - 'eslint.config.js'
-      - 'eslint.config.*'
-      - 'prettier.config.js'
-      - 'prettier.config.*'
-      - '.prettierrc*'
+      - "tsconfig.json"
+      - "tsconfig.*.json"
+      - "eslint.config.js"
+      - "eslint.config.*"
+      - "prettier.config.js"
+      - "prettier.config.*"
+      - ".prettierrc*"
       # Test config files
-      - 'vitest.config.ts'
-      - 'playwright.config.ts'
+      - "vitest.config.ts"
+      - "playwright.config.ts"
       # Package files
-      - 'package.json'
-      - 'bun.lock'
+      - "package.json"
+      - "bun.lock"
       # Always run on workflow changes
-      - '.github/workflows/**'
+      - ".github/workflows/**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      # TypeScript/JavaScript files
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.jsx"
+      - "**.mjs"
+      - "**.cjs"
+      # Config files that affect checks
+      - "tsconfig.json"
+      - "tsconfig.*.json"
+      - "eslint.config.js"
+      - "eslint.config.*"
+      - "prettier.config.js"
+      - "prettier.config.*"
+      - ".prettierrc*"
+      # Test config files
+      - "vitest.config.ts"
+      - "playwright.config.ts"
+      # Package files
+      - "package.json"
+      - "bun.lock"
+      # Always run on workflow changes
+      - ".github/workflows/**"
+
+# Prevent duplicate runs - cancel any pending job if new one starts
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   typecheck:
@@ -124,7 +155,7 @@ jobs:
               break
             fi
           done
-          
+
           if [ -n "$COVERAGE_FILE" ]; then
             echo "Found coverage file: $COVERAGE_FILE"
             # Extract coverage table using the extraction script (includes detailed file breakdown)
@@ -158,9 +189,9 @@ jobs:
           header: unit-test-coverage-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           message: |
             ## 🧪 Unit Test Coverage
-            
+
             Commit: `${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}`
-            
+
             ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -213,7 +244,7 @@ jobs:
               break
             fi
           done
-          
+
           if [ -n "$COVERAGE_FILE" ]; then
             echo "Found coverage file: $COVERAGE_FILE"
             # Extract coverage table using the extraction script (includes detailed file breakdown)
@@ -247,9 +278,9 @@ jobs:
           header: integration-test-coverage-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           message: |
             ## 🔗 Integration Test Coverage
-            
+
             Commit: `${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}`
-            
+
             ${{ steps.coverage.outputs.table || 'Coverage data not available' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -337,4 +368,3 @@ jobs:
           RESEND_API_KEY: "test-resend-key"
           RESEND_FROM: "test@example.com"
           CONTACT_EMAIL: "test@example.com"
-

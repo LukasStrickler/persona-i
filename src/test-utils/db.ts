@@ -1,48 +1,58 @@
 import { createClient, type Client } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
+import { migrate } from "drizzle-orm/libsql/migrator";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { unlink } from "node:fs/promises";
 
 import * as schema from "@/server/db/schema";
 import { getTestDatabaseToken, getTestDatabaseUrl } from "./db-config";
 
-/**
- * Cache the test database connection to avoid creating multiple connections.
- */
-const globalForTestDb = globalThis as unknown as {
-  testClient: Client | undefined;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, "../../");
+
+export type TestDatabase = LibSQLDatabase<typeof schema> & {
+  $client: Client;
+  $dbPath: string | null;
 };
 
 /**
- * Gets or creates a test database client.
- * Uses cached client in global scope to avoid multiple connections.
+ * Creates a fresh SQLite database for testing with migrations applied.
+ * Each call returns a completely isolated database instance.
  */
-export function getTestDbClient(): Client {
+export async function createTestDatabase(): Promise<TestDatabase> {
   const url = getTestDatabaseUrl();
   const token = getTestDatabaseToken();
 
-  globalForTestDb.testClient ??= createClient({
+  const client = createClient({
     url,
     authToken: token || undefined,
   });
 
-  return globalForTestDb.testClient;
+  const db = drizzle(client, { schema }) as TestDatabase;
+
+  db.$client = client;
+  // Extract file path from URL for cleanup (e.g., "file:/path/to/db" -> "/path/to/db")
+  db.$dbPath = url.startsWith("file:") ? url.slice(5) : null;
+
+  const migrationsPath = path.resolve(projectRoot, "src/server/db/_migrations");
+  await migrate(db, { migrationsFolder: migrationsPath });
+
+  return db;
 }
 
 /**
- * Gets a test database instance (Drizzle).
- * Uses the test database client.
+ * Closes the database client and cleans up temp files.
+ * Must be called in afterEach to prevent resource leaks.
  */
-export function getTestDb() {
-  const client = getTestDbClient();
-  return drizzle(client, { schema });
-}
+export async function closeTestDatabase(db: TestDatabase): Promise<void> {
+  db.$client.close();
 
-/**
- * Clears the cached test database client.
- * Useful for cleanup between test runs.
- */
-export function clearTestDbCache() {
-  if (globalForTestDb.testClient) {
-    globalForTestDb.testClient.close();
-    globalForTestDb.testClient = undefined;
+  if (db.$dbPath) {
+    try {
+      await unlink(db.$dbPath);
+    } catch {
+      // File may already be deleted or never created
+    }
   }
 }
