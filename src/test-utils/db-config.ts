@@ -1,32 +1,34 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 /**
- * Unified database configuration for tests.
- * Automatically detects database type and determines parallel execution capability.
- *
- * Database Isolation Pattern:
- * - Uses `:memory:` (not `file::memory:`) for proper isolation
- * - Each call to `createTestDatabase()` creates a new, isolated in-memory database
- * - Tests use `beforeEach` to create a fresh database for each test
- * - Migrations are automatically applied when creating the database
- * - No manual cleanup needed - each test gets a completely fresh database
+ * Generates a unique database name for test isolation.
+ * Uses a combination of timestamp and random string to ensure uniqueness.
  */
+function generateUniqueDbName(): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10);
+  return `test_${timestamp}_${random}`;
+}
 
 /**
  * Gets the test database URL.
  * Defaults to in-memory SQLite if TEST_DATABASE_URL is not set.
  *
- * @returns Database URL string. Defaults to `:memory:` for proper isolation.
+ * @returns Database URL string. Uses a unique temp file database for each test.
  */
 export function getTestDatabaseUrl(): string {
-  // Check if TEST_DATABASE_URL is explicitly set
   const testDbUrl = process.env.TEST_DATABASE_URL;
   if (testDbUrl) {
     return testDbUrl;
   }
 
-  // Default to isolated in-memory SQLite (enables parallel test execution)
-  // Use ":memory:" for proper isolation (matches isolated test pattern)
-  // Each connection gets its own isolated database instance
-  return ":memory:";
+  // Use a unique temp file database for each test
+  // libsql doesn't support mode=memory, so we use actual temp files
+  // Each test gets a unique file to ensure isolation
+  const uniqueName = generateUniqueDbName();
+  const tempPath = join(tmpdir(), `${uniqueName}.db`);
+  return `file:${tempPath}`;
 }
 
 /**
@@ -65,25 +67,30 @@ export function isRemoteDb(url: string): boolean {
 
 /**
  * Determines if tests can run in parallel based on database type.
- * - In-memory DB without shared cache: ✅ Can run in parallel (isolated per connection)
- * - In-memory DB with shared cache: ❌ Must run sequentially (shared state across connections)
- * - File-based SQLite: ❌ Must run sequentially (file locking)
- * - Remote DB: ❌ Must run sequentially (shared resource)
+ * - Default (no TEST_DATABASE_URL): ✅ Parallel safe - each test gets a unique database name
+ * - Explicit TEST_DATABASE_URL with shared cache: ❌ Sequential (shared state)
+ * - File-based SQLite: ❌ Sequential (file locking)
+ * - Remote DB: ❌ Sequential (shared resource)
  */
 export function canRunTestsInParallel(): boolean {
-  const dbUrl = getTestDatabaseUrl();
+  const explicitUrl = process.env.TEST_DATABASE_URL;
 
-  // In-memory databases with shared cache cannot run in parallel
-  if (isInMemoryDb(dbUrl) && dbUrl.includes("cache=shared")) {
-    return false;
-  }
-
-  // In-memory databases without shared cache can run in parallel
-  if (isInMemoryDb(dbUrl)) {
+  // Default behavior: unique database per test = parallel safe
+  if (!explicitUrl) {
     return true;
   }
 
-  // File-based and remote databases cannot run in parallel
+  // Explicit URL with shared cache = shared state = sequential
+  if (explicitUrl.includes("cache=shared")) {
+    return false;
+  }
+
+  // Explicit in-memory without shared cache = parallel safe
+  if (isInMemoryDb(explicitUrl)) {
+    return true;
+  }
+
+  // File-based and remote databases = sequential
   return false;
 }
 
