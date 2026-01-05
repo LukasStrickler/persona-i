@@ -262,9 +262,7 @@ export function MultiChoiceQuestion({
                   isFocused &&
                     !isSelected &&
                     "ring-primary/50 bg-primary/5 ring-2",
-                  isFocused &&
-                    isSelected &&
-                    "ring-primary ring-2 ring-offset-2",
+                  isFocused && isSelected && "ring-primary ring-2",
                   isDisabled &&
                     "hover:border-border/50 cursor-not-allowed opacity-50 hover:bg-transparent",
                 )}
@@ -325,7 +323,7 @@ export function MultiChoiceQuestion({
                 {isSelected && (
                   <motion.div
                     layoutId={`selection-highlight-multi-${question.id}-${option.value}`}
-                    className="border-primary pointer-events-none absolute inset-0 rounded-lg border-2"
+                    className="border-primary pointer-events-none absolute -inset-px rounded-lg border-2"
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.98 }}

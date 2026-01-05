@@ -136,7 +136,7 @@ export function BooleanQuestion({
               {isSelected && (
                 <motion.div
                   layoutId={`selection-highlight-bool-${question.id}`}
-                  className="border-primary pointer-events-none absolute inset-0 rounded-lg border-2"
+                  className="border-primary pointer-events-none absolute -inset-px rounded-lg border-2"
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
