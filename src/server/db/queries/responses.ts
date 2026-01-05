@@ -158,6 +158,10 @@ export async function saveResponsesBatch(
     throw new Error("Session missing questionnaire version");
   }
 
+  if (responses.length === 0) {
+    throw new Error("Cannot save empty responses array");
+  }
+
   // Get all items for this version to validate questions
   const items = await db.query.questionnaireItem.findMany({
     where: eq(questionnaireItem.questionnaireVersionId, questionnaireVersionId),
@@ -179,10 +183,6 @@ export async function saveResponsesBatch(
 
   // Process all responses within a single transaction to ensure atomicity
   return db.transaction(async (tx) => {
-    if (responses.length === 0) {
-      throw new Error("Cannot save empty responses array");
-    }
-
     for (const resp of responses) {
       try {
         if (!validQuestionIds.has(resp.questionId)) {
