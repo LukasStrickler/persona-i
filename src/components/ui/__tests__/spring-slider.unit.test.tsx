@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SpringSlider } from "../spring-slider";
 
 global.ResizeObserver = class ResizeObserver {
@@ -43,12 +43,15 @@ describe("SpringSlider", () => {
       />,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="slider-track"]'),
+      ).toBeTruthy();
+    });
 
     const trackContainer = container.querySelector(
       '[data-testid="slider-track"]',
     )!;
-    expect(trackContainer).toBeTruthy();
 
     const rect = {
       left: 0,

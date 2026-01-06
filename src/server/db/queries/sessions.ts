@@ -41,17 +41,9 @@ export async function getOrCreateSubjectProfile(
       where: eq(subjectProfile.id, subjectProfileId),
     });
 
-    subjectProfileRecord ??= {
-      id: subjectProfileId,
-      subjectType: "human",
-      userId,
-      displayName: userName ?? userEmail,
-      preferredLocale: null,
-      metadataJson: null,
-      consentFlagsJson: null,
-      createdAt: now,
-      updatedAt: now,
-    };
+    if (!subjectProfileRecord) {
+      throw new Error("Failed to create subject profile");
+    }
   }
 
   return subjectProfileRecord;
@@ -102,7 +94,11 @@ export async function createAssessmentSession(
     where: eq(assessmentSession.id, sessionId),
   });
 
-  return newSession!;
+  if (!newSession) {
+    throw new Error("Failed to create assessment session");
+  }
+
+  return newSession;
 }
 
 export async function getAssessmentSession(

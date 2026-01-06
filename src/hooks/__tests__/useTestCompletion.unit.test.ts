@@ -20,25 +20,16 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/utils/questionnaire-responses", () => ({
-  buildResponsesPayload: vi.fn(
-    (items: QuestionnaireItem[], responses: Record<string, unknown>) => {
-      const payload: Array<{ questionId: string; value: unknown }> = [];
-      for (const item of items) {
-        const questionId = item.question.id;
-        if (!questionId) continue;
-        const value = responses[questionId];
-        if (value !== undefined) {
-          payload.push({
-            questionId,
-            value,
-          });
-        }
-      }
-      return payload;
-    },
-  ),
-}));
+vi.mock("@/lib/utils/questionnaire-responses", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/utils/questionnaire-responses")
+  >("@/lib/utils/questionnaire-responses");
+
+  return {
+    ...actual,
+    buildResponsesPayload: vi.fn(actual.buildResponsesPayload),
+  };
+});
 
 const { mockSaveResponsesBatchUseMutation, mockUseRouter } = vi.hoisted(() => ({
   mockSaveResponsesBatchUseMutation: vi.fn(),

@@ -319,18 +319,14 @@ export async function getModelResponses(
   db: typeof DbInstance,
   questionnaireId: string,
 ) {
-  const allModelProfilesResult = await db
+  const allModelProfiles = await db
     .select()
     .from(subjectProfile)
     .where(eq(subjectProfile.subjectType, "llm"))
     .catch((error) => {
       logger.error("Failed to fetch model profiles:", error);
-      return [];
+      throw error;
     });
-
-  const allModelProfiles = Array.isArray(allModelProfilesResult)
-    ? allModelProfilesResult
-    : [];
 
   const activeVersion = await db.query.questionnaireVersion.findFirst({
     where: and(

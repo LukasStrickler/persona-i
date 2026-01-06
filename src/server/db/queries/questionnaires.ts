@@ -314,29 +314,79 @@ export async function getUserQuestionnaireAccess(
   );
 }
 
-export async function getQuestionnaireById(db: typeof DbInstance, id: string) {
-  const q = await db.query.questionnaire.findFirst({
-    where: eq(questionnaire.id, id),
+export async function hasUserQuestionnaireAccess(
+  db: typeof DbInstance,
+  userId: string,
+  questionnaireId: string,
+) {
+  const access = await db.query.userQuestionnaireAccess.findFirst({
+    where: and(
+      eq(userQuestionnaireAccess.userId, userId),
+      eq(userQuestionnaireAccess.questionnaireId, questionnaireId),
+    ),
   });
 
-  if (!q) {
+  return Boolean(access);
+}
+
+export async function getQuestionnaireById(db: typeof DbInstance, id: string) {
+  const result = await db
+    .select({
+      id: questionnaire.id,
+      slug: questionnaire.slug,
+      title: questionnaire.title,
+      description: questionnaire.description,
+      isPublic: questionnaire.isPublic,
+      status: questionnaire.status,
+      createdAt: questionnaire.createdAt,
+      updatedAt: questionnaire.updatedAt,
+      versionId: questionnaireVersion.id,
+      version: questionnaireVersion.version,
+      versionQuestionnaireId: questionnaireVersion.questionnaireId,
+      isActive: questionnaireVersion.isActive,
+      publishedAt: questionnaireVersion.publishedAt,
+      versionMetadataJson: questionnaireVersion.metadataJson,
+      versionCreatedAt: questionnaireVersion.createdAt,
+    })
+    .from(questionnaire)
+    .innerJoin(
+      questionnaireVersion,
+      and(
+        eq(questionnaireVersion.questionnaireId, questionnaire.id),
+        eq(questionnaireVersion.isActive, true),
+      ),
+    )
+    .where(eq(questionnaire.id, id))
+    .orderBy(desc(questionnaireVersion.version))
+    .limit(1);
+
+  if (result.length === 0 || !result[0]) {
     return null;
   }
 
-  const activeVersion = await db.query.questionnaireVersion.findFirst({
-    where: and(
-      eq(questionnaireVersion.questionnaireId, q.id),
-      eq(questionnaireVersion.isActive, true),
-    ),
-    orderBy: [desc(questionnaireVersion.version)],
-  });
+  const row = result[0];
 
-  if (!activeVersion) {
+  if (!row.versionId) {
     throw new Error("No active version found for this questionnaire");
   }
 
   return {
-    ...q,
-    activeVersion,
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    isPublic: row.isPublic,
+    status: row.status,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    activeVersion: {
+      id: row.versionId,
+      version: row.version,
+      questionnaireId: row.versionQuestionnaireId,
+      isActive: row.isActive,
+      publishedAt: row.publishedAt,
+      metadataJson: row.versionMetadataJson,
+      createdAt: row.versionCreatedAt,
+    },
   };
 }
