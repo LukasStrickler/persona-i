@@ -108,8 +108,7 @@ export function TestAnalysisClient({
 
     // Only initialize if we don't have this exact data already
     const needsInit =
-      !currentMeta ||
-      currentMeta.id !== initialData.questionnaire.id ||
+      currentMeta?.id !== initialData.questionnaire.id ||
       currentMeta.version !== initialData.questionnaire.version;
 
     if (needsInit) {

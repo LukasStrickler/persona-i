@@ -335,8 +335,7 @@ export function useTestAnalysisData(
     const currentCache = currentState.cacheMeta;
 
     if (
-      currentCache &&
-      currentCache.questionnaireId === questionnaireData.id &&
+      currentCache?.questionnaireId === questionnaireData.id &&
       currentCache.version === versionData.version &&
       currentCache.versionId === versionData.id &&
       currentState.questions.size > 0
@@ -345,8 +344,7 @@ export function useTestAnalysisData(
     }
 
     if (
-      currentCache &&
-      currentCache.questionnaireId === questionnaireData.id &&
+      currentCache?.questionnaireId === questionnaireData.id &&
       (currentCache.version !== versionData.version ||
         currentCache.versionId !== versionData.id)
     ) {
@@ -641,9 +639,9 @@ export function useTestAnalysisData(
 
   const isFetchingInBackground = Boolean(
     hasCompleteZustandCache &&
-      (questionnaireQuery.isFetching ||
-        modelDataQuery.isFetching ||
-        userDataQuery.isFetching),
+    (questionnaireQuery.isFetching ||
+      modelDataQuery.isFetching ||
+      userDataQuery.isFetching),
   );
 
   // Only show loading if:

@@ -12,10 +12,8 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StartTestButtonProps
-  extends Omit<
-      React.ComponentPropsWithoutRef<"button">,
-      "onClick" | "disabled"
-    >,
+  extends
+    Omit<React.ComponentPropsWithoutRef<"button">, "onClick" | "disabled">,
     VariantProps<typeof buttonVariants> {
   questionnaireSlug: string;
   children?: React.ReactNode;
