@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   assessmentSession,
   subjectProfile,
@@ -144,43 +144,87 @@ export async function getAssessmentSession(
     .where(eq(questionnaireItem.questionnaireVersionId, version.id))
     .orderBy(questionnaireItem.position);
 
-  const itemsWithQuestions = await Promise.all(
-    items.map(async (item) => {
-      const question = await db.query.questionBankItem.findFirst({
-        where: eq(questionBankItem.id, item.questionId),
-      });
+  const questionIds = Array.from(new Set(items.map((item) => item.questionId)));
 
-      if (!question) {
-        return null;
-      }
+  const questions =
+    questionIds.length > 0
+      ? await db
+          .select()
+          .from(questionBankItem)
+          .where(inArray(questionBankItem.id, questionIds))
+      : [];
 
-      const options =
-        question.questionTypeCode === "single_choice" ||
-        question.questionTypeCode === "multi_choice"
-          ? await db
-              .select()
-              .from(questionOption)
-              .where(eq(questionOption.questionId, question.id))
-              .orderBy(questionOption.position)
-          : [];
-
-      const existingResponse = await db.query.response.findFirst({
-        where: and(
-          eq(response.assessmentSessionId, session.id),
-          eq(response.questionId, question.id),
-        ),
-      });
-
-      return {
-        ...item,
-        question: {
-          ...question,
-          options,
-        },
-        response: existingResponse ?? null,
-      };
-    }),
+  const questionsById = new Map(
+    questions.map((question) => [question.id, question]),
   );
+
+  const choiceQuestionIds = questions
+    .filter(
+      (question) =>
+        question.questionTypeCode === "single_choice" ||
+        question.questionTypeCode === "multi_choice",
+    )
+    .map((question) => question.id);
+
+  const options =
+    choiceQuestionIds.length > 0
+      ? await db
+          .select()
+          .from(questionOption)
+          .where(inArray(questionOption.questionId, choiceQuestionIds))
+          .orderBy(questionOption.position)
+      : [];
+
+  const optionsByQuestionId = new Map<string, typeof options>();
+  for (const option of options) {
+    if (!optionsByQuestionId.has(option.questionId)) {
+      optionsByQuestionId.set(option.questionId, []);
+    }
+    optionsByQuestionId.get(option.questionId)?.push(option);
+  }
+
+  const responses =
+    questionIds.length > 0
+      ? await db
+          .select()
+          .from(response)
+          .where(
+            and(
+              eq(response.assessmentSessionId, session.id),
+              inArray(response.questionId, questionIds),
+            ),
+          )
+      : [];
+
+  const responsesByQuestionId = new Map(
+    responses.map((responseItem) => [responseItem.questionId, responseItem]),
+  );
+
+  const itemsWithQuestions = items.map((item) => {
+    const question = questionsById.get(item.questionId);
+
+    if (!question) {
+      return null;
+    }
+
+    const isChoiceQuestion =
+      question.questionTypeCode === "single_choice" ||
+      question.questionTypeCode === "multi_choice";
+    const questionOptions = isChoiceQuestion
+      ? (optionsByQuestionId.get(question.id) ?? [])
+      : [];
+
+    const existingResponse = responsesByQuestionId.get(question.id) ?? null;
+
+    return {
+      ...item,
+      question: {
+        ...question,
+        options: questionOptions,
+      },
+      response: existingResponse,
+    };
+  });
 
   const validItems = itemsWithQuestions.filter(
     (item): item is NonNullable<typeof item> => item !== null,

@@ -336,8 +336,8 @@ export function useTestAnalysisData(
 
     if (
       currentCache?.questionnaireId === questionnaireData.id &&
-      currentCache.version === versionData.version &&
-      currentCache.versionId === versionData.id &&
+      currentCache?.version === versionData.version &&
+      currentCache?.versionId === versionData.id &&
       currentState.questions.size > 0
     ) {
       return;
@@ -345,8 +345,8 @@ export function useTestAnalysisData(
 
     if (
       currentCache?.questionnaireId === questionnaireData.id &&
-      (currentCache.version !== versionData.version ||
-        currentCache.versionId !== versionData.id)
+      (currentCache?.version !== versionData.version ||
+        currentCache?.versionId !== versionData.id)
     ) {
       invalidateAll();
 

@@ -94,6 +94,44 @@ describe("Questionnaire Queries", () => {
     expect(result[0]?.activeVersion?.id).toBe(vId);
   });
 
+  it("should get multiple public questionnaires with batch query optimization", async () => {
+    const questionnaireData: Array<{ qId: string; vId: string }> = [];
+
+    for (let i = 0; i < 5; i++) {
+      const qId = crypto.randomUUID();
+      const vId = crypto.randomUUID();
+      questionnaireData.push({ qId, vId });
+
+      await db.insert(questionnaire).values({
+        id: qId,
+        slug: `batch-test-${i}`,
+        title: `Batch Test ${i}`,
+        description: `Description ${i}`,
+        isPublic: true,
+        status: "active",
+        createdAt: new Date(Date.now() - i * 1000),
+      });
+
+      await db.insert(questionnaireVersion).values({
+        id: vId,
+        questionnaireId: qId,
+        version: 1,
+        isActive: true,
+        createdAt: new Date(),
+      });
+    }
+
+    const result = await getPublicQuestionnaires(db);
+
+    expect(result).toHaveLength(5);
+
+    for (const { qId, vId } of questionnaireData) {
+      const found = result.find((r) => r.id === qId);
+      expect(found).toBeDefined();
+      expect(found?.activeVersion?.id).toBe(vId);
+    }
+  });
+
   it("should get questionnaire by slug with items and questions", async () => {
     // Seed data
     const qId = crypto.randomUUID();

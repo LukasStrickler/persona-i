@@ -15,25 +15,36 @@ export async function getPublicQuestionnaires(db: typeof DbInstance) {
     orderBy: [desc(questionnaire.createdAt)],
   });
 
-  // Get active version for each questionnaire
-  const withVersions = await Promise.all(
-    publicQuestionnaires.map(async (q) => {
-      const activeVersion = await db.query.questionnaireVersion.findFirst({
-        where: and(
-          eq(questionnaireVersion.questionnaireId, q.id),
-          eq(questionnaireVersion.isActive, true),
-        ),
-        orderBy: [desc(questionnaireVersion.version)],
-      });
+  const questionnaireIds = publicQuestionnaires.map((q) => q.id);
 
-      return {
-        ...q,
-        activeVersion,
-      };
-    }),
-  );
+  const activeVersions =
+    questionnaireIds.length > 0
+      ? await db
+          .select()
+          .from(questionnaireVersion)
+          .where(
+            and(
+              inArray(questionnaireVersion.questionnaireId, questionnaireIds),
+              eq(questionnaireVersion.isActive, true),
+            ),
+          )
+          .orderBy(desc(questionnaireVersion.version))
+      : [];
 
-  return withVersions;
+  const versionsByQuestionnaireId = new Map<
+    string,
+    (typeof activeVersions)[number]
+  >();
+  for (const version of activeVersions) {
+    if (!versionsByQuestionnaireId.has(version.questionnaireId)) {
+      versionsByQuestionnaireId.set(version.questionnaireId, version);
+    }
+  }
+
+  return publicQuestionnaires.map((q) => ({
+    ...q,
+    activeVersion: versionsByQuestionnaireId.get(q.id),
+  }));
 }
 
 /**
@@ -255,30 +266,48 @@ export async function getUserQuestionnaireAccess(
     .from(userQuestionnaireAccess)
     .where(eq(userQuestionnaireAccess.userId, userId));
 
-  const questionnairesWithVersions = await Promise.all(
-    accesses.map(async (access) => {
-      const q = await db.query.questionnaire.findFirst({
-        where: eq(questionnaire.id, access.questionnaireId),
-      });
+  if (accesses.length === 0) {
+    return [];
+  }
 
-      if (!q) {
-        return null;
-      }
+  const questionnaireIds = accesses.map((a) => a.questionnaireId);
 
-      const activeVersion = await db.query.questionnaireVersion.findFirst({
-        where: and(
-          eq(questionnaireVersion.questionnaireId, q.id),
-          eq(questionnaireVersion.isActive, true),
-        ),
-        orderBy: [desc(questionnaireVersion.version)],
-      });
+  const questionnaires = await db
+    .select()
+    .from(questionnaire)
+    .where(inArray(questionnaire.id, questionnaireIds));
 
-      return {
-        ...q,
-        activeVersion,
-      };
-    }),
-  );
+  const activeVersions = await db
+    .select()
+    .from(questionnaireVersion)
+    .where(
+      and(
+        inArray(questionnaireVersion.questionnaireId, questionnaireIds),
+        eq(questionnaireVersion.isActive, true),
+      ),
+    )
+    .orderBy(desc(questionnaireVersion.version));
+
+  const questionnaireMap = new Map(questionnaires.map((q) => [q.id, q]));
+  const versionMap = new Map<
+    string,
+    (typeof activeVersions)[number] | undefined
+  >();
+  for (const v of activeVersions) {
+    if (!versionMap.has(v.questionnaireId)) {
+      versionMap.set(v.questionnaireId, v);
+    }
+  }
+
+  const questionnairesWithVersions = accesses.map((access) => {
+    const q = questionnaireMap.get(access.questionnaireId);
+    if (!q) return null;
+
+    return {
+      ...q,
+      activeVersion: versionMap.get(q.id),
+    };
+  });
 
   return questionnairesWithVersions.filter(
     (q): q is NonNullable<typeof q> => q !== null,
