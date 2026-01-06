@@ -349,7 +349,7 @@ export async function getQuestionnaireById(db: typeof DbInstance, id: string) {
       versionCreatedAt: questionnaireVersion.createdAt,
     })
     .from(questionnaire)
-    .innerJoin(
+    .leftJoin(
       questionnaireVersion,
       and(
         eq(questionnaireVersion.questionnaireId, questionnaire.id),

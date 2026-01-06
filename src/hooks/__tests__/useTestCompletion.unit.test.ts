@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTestCompletion } from "../useTestCompletion";
 import type { QuestionnaireItem } from "@/lib/types/questionnaire-responses";
+import type * as questionnaireResponses from "@/lib/utils/questionnaire-responses";
 
 // Mocks
 
@@ -21,9 +22,9 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 vi.mock("@/lib/utils/questionnaire-responses", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/lib/utils/questionnaire-responses")
-  >("@/lib/utils/questionnaire-responses");
+  const actual = await vi.importActual<typeof questionnaireResponses>(
+    "@/lib/utils/questionnaire-responses",
+  );
 
   return {
     ...actual,
