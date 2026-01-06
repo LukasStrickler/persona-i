@@ -108,9 +108,8 @@ export function TestAnalysisClient({
 
     // Only initialize if we don't have this exact data already
     const needsInit =
-      !currentMeta ||
-      currentMeta.id !== initialData.questionnaire.id ||
-      currentMeta.version !== initialData.questionnaire.version;
+      currentMeta?.id !== initialData.questionnaire.id ||
+      currentMeta?.version !== initialData.questionnaire.version;
 
     if (needsInit) {
       // Only cache questionnaire metadata here; questions will be fetched via tRPC

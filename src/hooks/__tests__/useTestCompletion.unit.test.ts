@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTestCompletion } from "../useTestCompletion";
 import type { QuestionnaireItem } from "@/lib/types/questionnaire-responses";
+import type * as questionnaireResponses from "@/lib/utils/questionnaire-responses";
 
 // Mocks
 
@@ -20,26 +21,16 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/utils/questionnaire-responses", () => ({
-  buildResponsesPayload: vi.fn(
-    (items: QuestionnaireItem[], responses: Record<string, unknown>) => {
-      // Return a payload based on the responses
-      const payload: Array<{ questionId: string; value: unknown }> = [];
-      for (const item of items) {
-        const questionId = item.question.id;
-        if (!questionId) continue;
-        const value = responses[questionId];
-        if (value !== undefined) {
-          payload.push({
-            questionId,
-            value,
-          });
-        }
-      }
-      return payload;
-    },
-  ),
-}));
+vi.mock("@/lib/utils/questionnaire-responses", async () => {
+  const actual = await vi.importActual<typeof questionnaireResponses>(
+    "@/lib/utils/questionnaire-responses",
+  );
+
+  return {
+    ...actual,
+    buildResponsesPayload: vi.fn(actual.buildResponsesPayload),
+  };
+});
 
 const { mockSaveResponsesBatchUseMutation, mockUseRouter } = vi.hoisted(() => ({
   mockSaveResponsesBatchUseMutation: vi.fn(),
@@ -125,7 +116,6 @@ describe("useTestCompletion", () => {
   });
 
   it("should retry on batch save failure", async () => {
-    // Fail twice, then succeed
     mockSaveMutateAsync
       .mockResolvedValueOnce({ success: false, failed: [{ questionId: "q1" }] })
       .mockRejectedValueOnce(new Error("Network error"))

@@ -9,9 +9,9 @@ import { z } from "zod";
 const urlSchema = () =>
   z.string().refine(
     (value) => {
-      // Special case: Allow :memory: for libSQL in-memory databases
+      // Special case: Allow :memory: only in test environments
       if (value === ":memory:") {
-        return true;
+        return process.env.NODE_ENV === "test";
       }
       try {
         // Normalize file: URLs to file:/// format for proper URL parsing
@@ -51,7 +51,7 @@ const urlSchema = () =>
     },
     {
       message:
-        "Invalid URL format. Must be a valid URL with a protocol (e.g., http://, https://, libsql://, file:) or :memory: for in-memory databases",
+        "Invalid URL format. Must be a valid URL with a protocol (e.g., http://, https://, libsql://, file:). Use :memory: only when NODE_ENV is test.",
     },
   );
 

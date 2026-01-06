@@ -15,25 +15,36 @@ export async function getPublicQuestionnaires(db: typeof DbInstance) {
     orderBy: [desc(questionnaire.createdAt)],
   });
 
-  // Get active version for each questionnaire
-  const withVersions = await Promise.all(
-    publicQuestionnaires.map(async (q) => {
-      const activeVersion = await db.query.questionnaireVersion.findFirst({
-        where: and(
-          eq(questionnaireVersion.questionnaireId, q.id),
-          eq(questionnaireVersion.isActive, true),
-        ),
-        orderBy: [desc(questionnaireVersion.version)],
-      });
+  const questionnaireIds = publicQuestionnaires.map((q) => q.id);
 
-      return {
-        ...q,
-        activeVersion,
-      };
-    }),
-  );
+  const activeVersions =
+    questionnaireIds.length > 0
+      ? await db
+          .select()
+          .from(questionnaireVersion)
+          .where(
+            and(
+              inArray(questionnaireVersion.questionnaireId, questionnaireIds),
+              eq(questionnaireVersion.isActive, true),
+            ),
+          )
+          .orderBy(desc(questionnaireVersion.version))
+      : [];
 
-  return withVersions;
+  const versionsByQuestionnaireId = new Map<
+    string,
+    (typeof activeVersions)[number]
+  >();
+  for (const version of activeVersions) {
+    if (!versionsByQuestionnaireId.has(version.questionnaireId)) {
+      versionsByQuestionnaireId.set(version.questionnaireId, version);
+    }
+  }
+
+  return publicQuestionnaires.map((q) => ({
+    ...q,
+    activeVersion: versionsByQuestionnaireId.get(q.id),
+  }));
 }
 
 /**
@@ -255,59 +266,127 @@ export async function getUserQuestionnaireAccess(
     .from(userQuestionnaireAccess)
     .where(eq(userQuestionnaireAccess.userId, userId));
 
-  const questionnairesWithVersions = await Promise.all(
-    accesses.map(async (access) => {
-      const q = await db.query.questionnaire.findFirst({
-        where: eq(questionnaire.id, access.questionnaireId),
-      });
+  if (accesses.length === 0) {
+    return [];
+  }
 
-      if (!q) {
-        return null;
-      }
+  const questionnaireIds = accesses.map((a) => a.questionnaireId);
 
-      const activeVersion = await db.query.questionnaireVersion.findFirst({
-        where: and(
-          eq(questionnaireVersion.questionnaireId, q.id),
-          eq(questionnaireVersion.isActive, true),
-        ),
-        orderBy: [desc(questionnaireVersion.version)],
-      });
+  const questionnaires = await db
+    .select()
+    .from(questionnaire)
+    .where(inArray(questionnaire.id, questionnaireIds));
 
-      return {
-        ...q,
-        activeVersion,
-      };
-    }),
-  );
+  const activeVersions = await db
+    .select()
+    .from(questionnaireVersion)
+    .where(
+      and(
+        inArray(questionnaireVersion.questionnaireId, questionnaireIds),
+        eq(questionnaireVersion.isActive, true),
+      ),
+    )
+    .orderBy(desc(questionnaireVersion.version));
+
+  const questionnaireMap = new Map(questionnaires.map((q) => [q.id, q]));
+  const versionMap = new Map<
+    string,
+    (typeof activeVersions)[number] | undefined
+  >();
+  for (const v of activeVersions) {
+    if (!versionMap.has(v.questionnaireId)) {
+      versionMap.set(v.questionnaireId, v);
+    }
+  }
+
+  const questionnairesWithVersions = accesses.map((access) => {
+    const q = questionnaireMap.get(access.questionnaireId);
+    if (!q) return null;
+
+    return {
+      ...q,
+      activeVersion: versionMap.get(q.id),
+    };
+  });
 
   return questionnairesWithVersions.filter(
     (q): q is NonNullable<typeof q> => q !== null,
   );
 }
 
-export async function getQuestionnaireById(db: typeof DbInstance, id: string) {
-  const q = await db.query.questionnaire.findFirst({
-    where: eq(questionnaire.id, id),
+export async function hasUserQuestionnaireAccess(
+  db: typeof DbInstance,
+  userId: string,
+  questionnaireId: string,
+) {
+  const access = await db.query.userQuestionnaireAccess.findFirst({
+    where: and(
+      eq(userQuestionnaireAccess.userId, userId),
+      eq(userQuestionnaireAccess.questionnaireId, questionnaireId),
+    ),
   });
 
-  if (!q) {
+  return Boolean(access);
+}
+
+export async function getQuestionnaireById(db: typeof DbInstance, id: string) {
+  const result = await db
+    .select({
+      id: questionnaire.id,
+      slug: questionnaire.slug,
+      title: questionnaire.title,
+      description: questionnaire.description,
+      isPublic: questionnaire.isPublic,
+      status: questionnaire.status,
+      createdAt: questionnaire.createdAt,
+      updatedAt: questionnaire.updatedAt,
+      versionId: questionnaireVersion.id,
+      version: questionnaireVersion.version,
+      versionQuestionnaireId: questionnaireVersion.questionnaireId,
+      isActive: questionnaireVersion.isActive,
+      publishedAt: questionnaireVersion.publishedAt,
+      versionMetadataJson: questionnaireVersion.metadataJson,
+      versionCreatedAt: questionnaireVersion.createdAt,
+    })
+    .from(questionnaire)
+    .leftJoin(
+      questionnaireVersion,
+      and(
+        eq(questionnaireVersion.questionnaireId, questionnaire.id),
+        eq(questionnaireVersion.isActive, true),
+      ),
+    )
+    .where(eq(questionnaire.id, id))
+    .orderBy(desc(questionnaireVersion.version))
+    .limit(1);
+
+  if (result.length === 0 || !result[0]) {
     return null;
   }
 
-  const activeVersion = await db.query.questionnaireVersion.findFirst({
-    where: and(
-      eq(questionnaireVersion.questionnaireId, q.id),
-      eq(questionnaireVersion.isActive, true),
-    ),
-    orderBy: [desc(questionnaireVersion.version)],
-  });
+  const row = result[0];
 
-  if (!activeVersion) {
+  if (!row.versionId) {
     throw new Error("No active version found for this questionnaire");
   }
 
   return {
-    ...q,
-    activeVersion,
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    isPublic: row.isPublic,
+    status: row.status,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    activeVersion: {
+      id: row.versionId,
+      version: row.version,
+      questionnaireId: row.versionQuestionnaireId,
+      isActive: row.isActive,
+      publishedAt: row.publishedAt,
+      metadataJson: row.versionMetadataJson,
+      createdAt: row.versionCreatedAt,
+    },
   };
 }

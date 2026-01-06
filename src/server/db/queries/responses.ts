@@ -29,7 +29,6 @@ export async function saveResponse(
     userId: string;
   },
 ) {
-  // Verify session ownership
   const session = await db.query.assessmentSession.findFirst({
     where: eq(assessmentSession.id, sessionId),
   });
@@ -46,7 +45,6 @@ export async function saveResponse(
     throw new Error("Cannot modify responses for completed session");
   }
 
-  // Validate that questionId belongs to this session's questionnaire version
   const questionnaireVersionId = session.questionnaireVersionId;
   if (!questionnaireVersionId) {
     throw new Error("Session missing questionnaire version");
@@ -62,7 +60,6 @@ export async function saveResponse(
     throw new Error("Question does not belong to this session's questionnaire");
   }
 
-  // Get question to determine type
   const question = await db.query.questionBankItem.findFirst({
     where: eq(questionBankItem.id, questionId),
   });
@@ -71,7 +68,6 @@ export async function saveResponse(
     throw new Error("Question not found");
   }
 
-  // Check for existing response
   const existingResponse = await db.query.response.findFirst({
     where: and(
       eq(response.assessmentSessionId, sessionId),
@@ -95,13 +91,11 @@ export async function saveResponse(
   );
 
   if (existingResponse) {
-    // Update existing response
     await db
       .update(response)
       .set(responseData)
       .where(eq(response.id, existingResponse.id));
   } else {
-    // Create new response
     const responseId = crypto.randomUUID();
     await db.insert(response).values({
       id: responseId,
@@ -110,7 +104,6 @@ export async function saveResponse(
     });
   }
 
-  // Update session updatedAt
   await db
     .update(assessmentSession)
     .set({ updatedAt: now })
@@ -136,7 +129,6 @@ export async function saveResponsesBatch(
     userId: string;
   },
 ) {
-  // Verify session ownership
   const session = await db.query.assessmentSession.findFirst({
     where: eq(assessmentSession.id, sessionId),
   });
@@ -162,13 +154,11 @@ export async function saveResponsesBatch(
     throw new Error("Cannot save empty responses array");
   }
 
-  // Get all items for this version to validate questions
   const items = await db.query.questionnaireItem.findMany({
     where: eq(questionnaireItem.questionnaireVersionId, questionnaireVersionId),
   });
   const validQuestionIds = new Set(items.map((i) => i.questionId));
 
-  // Get all questions to determine types
   const questions = await db.query.questionBankItem.findMany({
     where: inArray(
       questionBankItem.id,
@@ -181,7 +171,6 @@ export async function saveResponsesBatch(
   let savedCount = 0;
   const failed: { questionId: string; error: string }[] = [];
 
-  // Process all responses within a single transaction to ensure atomicity
   return db.transaction(async (tx) => {
     for (const resp of responses) {
       try {
@@ -210,7 +199,6 @@ export async function saveResponsesBatch(
           },
         );
 
-        // Check for existing response
         const existingResponse = await tx.query.response.findFirst({
           where: and(
             eq(response.assessmentSessionId, sessionId),
@@ -241,7 +229,6 @@ export async function saveResponsesBatch(
       }
     }
 
-    // Update session updatedAt
     await tx
       .update(assessmentSession)
       .set({ updatedAt: now })
@@ -270,7 +257,6 @@ export async function getAggregatedResponses(
   questionnaireId: string,
   userId: string,
 ) {
-  // Get active version for this questionnaire
   const activeVersion = await db.query.questionnaireVersion.findFirst({
     where: and(
       eq(questionnaireVersion.questionnaireId, questionnaireId),
@@ -287,7 +273,6 @@ export async function getAggregatedResponses(
     };
   }
 
-  // Get user's own completed sessions for this questionnaire version
   const userSessions = await db
     .select({
       id: assessmentSession.id,
@@ -317,7 +302,6 @@ export async function getAggregatedResponses(
     };
   }
 
-  // Get responses from user's own sessions only
   const userResponses = await db
     .select()
     .from(response)
@@ -335,19 +319,14 @@ export async function getModelResponses(
   db: typeof DbInstance,
   questionnaireId: string,
 ) {
-  // Get active version and model profiles
-  const allModelProfilesResult = await db
+  const allModelProfiles = await db
     .select()
     .from(subjectProfile)
     .where(eq(subjectProfile.subjectType, "llm"))
     .catch((error) => {
       logger.error("Failed to fetch model profiles:", error);
-      return [];
+      throw error;
     });
-
-  const allModelProfiles = Array.isArray(allModelProfilesResult)
-    ? allModelProfilesResult
-    : [];
 
   const activeVersion = await db.query.questionnaireVersion.findFirst({
     where: and(
@@ -374,7 +353,6 @@ export async function getModelResponses(
     };
   }
 
-  // Get all completed sessions for this questionnaire version from AI/LLM models
   const modelSessions = await db
     .select({
       id: assessmentSession.id,
@@ -399,7 +377,6 @@ export async function getModelResponses(
     };
   }
 
-  // Get all responses from model sessions
   const modelResponses = await db
     .select()
     .from(response)

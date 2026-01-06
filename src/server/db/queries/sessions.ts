@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   assessmentSession,
   subjectProfile,
@@ -25,7 +25,6 @@ export async function getOrCreateSubjectProfile(
   });
 
   if (!subjectProfileRecord) {
-    // Create new subject profile
     const subjectProfileId = crypto.randomUUID();
     const now = new Date();
 
@@ -38,23 +37,13 @@ export async function getOrCreateSubjectProfile(
       updatedAt: now,
     });
 
-    // Fetch the newly created profile to get the complete record with all fields
     subjectProfileRecord = await db.query.subjectProfile.findFirst({
       where: eq(subjectProfile.id, subjectProfileId),
     });
 
-    // Fallback to manual construction if fetch fails (should not happen in practice)
-    subjectProfileRecord ??= {
-      id: subjectProfileId,
-      subjectType: "human",
-      userId,
-      displayName: userName ?? userEmail,
-      preferredLocale: null,
-      metadataJson: null,
-      consentFlagsJson: null,
-      createdAt: now,
-      updatedAt: now,
-    };
+    if (!subjectProfileRecord) {
+      throw new Error("Failed to create subject profile");
+    }
   }
 
   return subjectProfileRecord;
@@ -72,7 +61,6 @@ export async function createAssessmentSession(
     userId: string;
   },
 ) {
-  // Check for existing incomplete session
   const existingSession = await db.query.assessmentSession.findFirst({
     where: and(
       eq(assessmentSession.questionnaireVersionId, questionnaireVersionId),
@@ -86,7 +74,6 @@ export async function createAssessmentSession(
     return existingSession;
   }
 
-  // Create new session
   const sessionId = crypto.randomUUID();
   const now = new Date();
 
@@ -107,7 +94,11 @@ export async function createAssessmentSession(
     where: eq(assessmentSession.id, sessionId),
   });
 
-  return newSession!;
+  if (!newSession) {
+    throw new Error("Failed to create assessment session");
+  }
+
+  return newSession;
 }
 
 export async function getAssessmentSession(
@@ -123,12 +114,10 @@ export async function getAssessmentSession(
     return null;
   }
 
-  // Verify ownership
   if (session.userId !== userId) {
     throw new Error("Unauthorized - session does not belong to user");
   }
 
-  // Get questionnaire version
   const version = await db.query.questionnaireVersion.findFirst({
     where: eq(questionnaireVersion.id, session.questionnaireVersionId),
   });
@@ -137,7 +126,6 @@ export async function getAssessmentSession(
     throw new Error("Questionnaire version not found");
   }
 
-  // Get questionnaire
   const q = await db.query.questionnaire.findFirst({
     where: eq(questionnaire.id, version.questionnaireId),
   });
@@ -146,59 +134,98 @@ export async function getAssessmentSession(
     throw new Error("Questionnaire not found");
   }
 
-  // Get questionnaire items
   const items = await db
     .select()
     .from(questionnaireItem)
     .where(eq(questionnaireItem.questionnaireVersionId, version.id))
     .orderBy(questionnaireItem.position);
 
-  // Get questions and existing responses
-  const itemsWithQuestions = await Promise.all(
-    items.map(async (item) => {
-      const question = await db.query.questionBankItem.findFirst({
-        where: eq(questionBankItem.id, item.questionId),
-      });
+  const questionIds = Array.from(new Set(items.map((item) => item.questionId)));
 
-      if (!question) {
-        return null;
-      }
+  const questions =
+    questionIds.length > 0
+      ? await db
+          .select()
+          .from(questionBankItem)
+          .where(inArray(questionBankItem.id, questionIds))
+      : [];
 
-      // Get options if this is a choice question
-      const options =
-        question.questionTypeCode === "single_choice" ||
-        question.questionTypeCode === "multi_choice"
-          ? await db
-              .select()
-              .from(questionOption)
-              .where(eq(questionOption.questionId, question.id))
-              .orderBy(questionOption.position)
-          : [];
-
-      // Get existing response
-      const existingResponse = await db.query.response.findFirst({
-        where: and(
-          eq(response.assessmentSessionId, session.id),
-          eq(response.questionId, question.id),
-        ),
-      });
-
-      return {
-        ...item,
-        question: {
-          ...question,
-          options,
-        },
-        response: existingResponse ?? null,
-      };
-    }),
+  const questionsById = new Map(
+    questions.map((question) => [question.id, question]),
   );
+
+  const choiceQuestionIds = questions
+    .filter(
+      (question) =>
+        question.questionTypeCode === "single_choice" ||
+        question.questionTypeCode === "multi_choice",
+    )
+    .map((question) => question.id);
+
+  const options =
+    choiceQuestionIds.length > 0
+      ? await db
+          .select()
+          .from(questionOption)
+          .where(inArray(questionOption.questionId, choiceQuestionIds))
+          .orderBy(questionOption.position)
+      : [];
+
+  const optionsByQuestionId = new Map<string, typeof options>();
+  for (const option of options) {
+    if (!optionsByQuestionId.has(option.questionId)) {
+      optionsByQuestionId.set(option.questionId, []);
+    }
+    optionsByQuestionId.get(option.questionId)?.push(option);
+  }
+
+  const responses =
+    questionIds.length > 0
+      ? await db
+          .select()
+          .from(response)
+          .where(
+            and(
+              eq(response.assessmentSessionId, session.id),
+              inArray(response.questionId, questionIds),
+            ),
+          )
+      : [];
+
+  const responsesByQuestionId = new Map(
+    responses.map((responseItem) => [responseItem.questionId, responseItem]),
+  );
+
+  const itemsWithQuestions = items.map((item) => {
+    const question = questionsById.get(item.questionId);
+
+    if (!question) {
+      return null;
+    }
+
+    const isChoiceQuestion =
+      question.questionTypeCode === "single_choice" ||
+      question.questionTypeCode === "multi_choice";
+    const questionOptions = isChoiceQuestion
+      ? (optionsByQuestionId.get(question.id) ?? [])
+      : [];
+
+    const existingResponse = responsesByQuestionId.get(question.id) ?? null;
+
+    return {
+      ...item,
+      question: {
+        ...question,
+        options: questionOptions,
+      },
+      response: existingResponse,
+    };
+  });
 
   const validItems = itemsWithQuestions.filter(
     (item): item is NonNullable<typeof item> => item !== null,
   );
 
-  // Group items by section
   const itemsBySection = new Map<string, typeof validItems>();
   for (const item of validItems) {
     const sectionName = item.section ?? "Uncategorized";
@@ -208,7 +235,6 @@ export async function getAssessmentSession(
     itemsBySection.get(sectionName)?.push(item);
   }
 
-  // Convert to sections array, ordered by minimum position in each section
   const sections = Array.from(itemsBySection.entries())
     .map(([name, sectionItems]) => ({
       name,
@@ -222,20 +248,16 @@ export async function getAssessmentSession(
     session,
     questionnaire: q,
     version,
-    items: validItems, // Keep for backward compatibility
-    sections, // New grouped structure
+    items: validItems,
+    sections,
   };
 }
 
-/**
- * Complete an assessment session
- */
 export async function completeSession(
   db: typeof DbType,
   sessionId: string,
   userId: string,
 ) {
-  // Verify session ownership
   const session = await db.query.assessmentSession.findFirst({
     where: eq(assessmentSession.id, sessionId),
   });
@@ -254,7 +276,6 @@ export async function completeSession(
 
   const now = new Date();
 
-  // Update session status
   await db
     .update(assessmentSession)
     .set({
@@ -267,15 +288,11 @@ export async function completeSession(
   return { success: true };
 }
 
-/**
- * Get incomplete sessions for a user for a specific questionnaire
- */
 export async function getIncompleteSessions(
   db: typeof DbType,
   questionnaireId: string,
   userId: string,
 ) {
-  // Get active version for this questionnaire
   const activeVersion = await db.query.questionnaireVersion.findFirst({
     where: and(
       eq(questionnaireVersion.questionnaireId, questionnaireId),
@@ -287,7 +304,6 @@ export async function getIncompleteSessions(
     return [];
   }
 
-  // Get user's subject profile
   const userProfile = await db.query.subjectProfile.findFirst({
     where: and(
       eq(subjectProfile.userId, userId),
@@ -299,7 +315,6 @@ export async function getIncompleteSessions(
     return [];
   }
 
-  // Get incomplete sessions for this user and questionnaire version
   const sessions = await db
     .select({
       id: assessmentSession.id,
@@ -321,16 +336,11 @@ export async function getIncompleteSessions(
   return sessions;
 }
 
-/**
- * Get user's session IDs and metadata for a questionnaire
- * Lightweight endpoint for cache invalidation checks
- */
 export async function getUserSessionIds(
   db: typeof DbType,
   questionnaireId: string,
   userId: string,
 ) {
-  // Get active version for this questionnaire
   const activeVersion = await db.query.questionnaireVersion.findFirst({
     where: and(
       eq(questionnaireVersion.questionnaireId, questionnaireId),
@@ -342,7 +352,6 @@ export async function getUserSessionIds(
     return { sessions: [] };
   }
 
-  // Get user's subject profile
   const userProfile = await db.query.subjectProfile.findFirst({
     where: and(
       eq(subjectProfile.userId, userId),
@@ -354,7 +363,6 @@ export async function getUserSessionIds(
     return { sessions: [] };
   }
 
-  // Get all user's sessions (completed and in_progress) for this questionnaire
   const sessions = await db
     .select({
       id: assessmentSession.id,

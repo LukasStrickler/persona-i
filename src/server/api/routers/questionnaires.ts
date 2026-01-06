@@ -85,11 +85,11 @@ export const questionnairesRouter = createTRPCRouter({
       // Check if user has access (public or private access)
       if (!q.isPublic) {
         // Check private access
-        const access = await questionnaireQueries.getUserQuestionnaireAccess(
+        const hasAccess = await questionnaireQueries.hasUserQuestionnaireAccess(
           ctx.db,
           ctx.user.id,
+          q.id,
         );
-        const hasAccess = access.some((a) => a.id === q.id);
 
         if (!hasAccess) {
           throw new Error("You do not have access to this questionnaire");
@@ -141,11 +141,11 @@ export const questionnairesRouter = createTRPCRouter({
       // Check if user has access (public or private access)
       if (!q.isPublic) {
         // Check private access
-        const access = await questionnaireQueries.getUserQuestionnaireAccess(
+        const hasAccess = await questionnaireQueries.hasUserQuestionnaireAccess(
           ctx.db,
           ctx.user.id,
+          q.id,
         );
-        const hasAccess = access.some((a) => a.id === q.id);
 
         if (!hasAccess) {
           throw new Error("You do not have access to this questionnaire");
