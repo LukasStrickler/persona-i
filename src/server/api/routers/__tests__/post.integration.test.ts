@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import {
+  createTestDatabase,
+  closeTestDatabase,
+  type TestDatabase,
+} from "@/test-utils/db";
 import { posts } from "@/server/db/schema";
 
 /**
@@ -7,7 +11,7 @@ import { posts } from "@/server/db/schema";
  *
  * This test demonstrates:
  * - Testing database operations with in-memory SQLite
- * - Creating fresh database for each test (matches Eilbote-Website pattern)
+ * - Creating fresh database for each test (matches isolated test pattern)
  * - Testing CRUD operations with real database queries
  * - Complete isolation between tests
  */
@@ -15,8 +19,12 @@ describe("Post Database Operations", () => {
   let db: TestDatabase;
 
   beforeEach(async () => {
-    // Create a fresh database for each test (matches Eilbote-Website pattern)
+    // Create a fresh database for each test (matches isolated test pattern)
     db = await createTestDatabase();
+  });
+
+  afterEach(async () => {
+    await closeTestDatabase(db);
   });
 
   it("should create a post", async () => {

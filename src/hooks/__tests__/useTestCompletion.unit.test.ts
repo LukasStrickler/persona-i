@@ -22,15 +22,10 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("@/lib/utils/questionnaire-responses", () => ({
   buildResponsesPayload: vi.fn(
-    (
-      items: Array<{ question?: { id: string }; questionId?: string }>,
-      responses: Record<string, unknown>,
-    ) => {
-      // Return a payload based on the responses
-      // buildResponsesPayload looks for item.question.id, not item.questionId
+    (items: QuestionnaireItem[], responses: Record<string, unknown>) => {
       const payload: Array<{ questionId: string; value: unknown }> = [];
       for (const item of items) {
-        const questionId = item.question?.id ?? item.questionId;
+        const questionId = item.question.id;
         if (!questionId) continue;
         const value = responses[questionId];
         if (value !== undefined) {
@@ -101,7 +96,6 @@ describe("useTestCompletion", () => {
               id: "item-1",
               position: 0,
               section: null,
-              questionId: "q1",
               question: {
                 id: "q1",
                 prompt: "Test question",
@@ -130,7 +124,6 @@ describe("useTestCompletion", () => {
   });
 
   it("should retry on batch save failure", async () => {
-    // Fail twice, then succeed
     mockSaveMutateAsync
       .mockResolvedValueOnce({ success: false, failed: [{ questionId: "q1" }] })
       .mockRejectedValueOnce(new Error("Network error"))
@@ -148,7 +141,6 @@ describe("useTestCompletion", () => {
               id: "item-1",
               position: 0,
               section: null,
-              questionId: "q1",
               question: {
                 id: "q1",
                 prompt: "Test question",

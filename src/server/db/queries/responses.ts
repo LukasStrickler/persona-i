@@ -29,7 +29,6 @@ export async function saveResponse(
     userId: string;
   },
 ) {
-  // Verify session ownership
   const session = await db.query.assessmentSession.findFirst({
     where: eq(assessmentSession.id, sessionId),
   });
@@ -46,7 +45,6 @@ export async function saveResponse(
     throw new Error("Cannot modify responses for completed session");
   }
 
-  // Validate that questionId belongs to this session's questionnaire version
   const questionnaireVersionId = session.questionnaireVersionId;
   if (!questionnaireVersionId) {
     throw new Error("Session missing questionnaire version");
@@ -62,7 +60,6 @@ export async function saveResponse(
     throw new Error("Question does not belong to this session's questionnaire");
   }
 
-  // Get question to determine type
   const question = await db.query.questionBankItem.findFirst({
     where: eq(questionBankItem.id, questionId),
   });
@@ -71,7 +68,6 @@ export async function saveResponse(
     throw new Error("Question not found");
   }
 
-  // Check for existing response
   const existingResponse = await db.query.response.findFirst({
     where: and(
       eq(response.assessmentSessionId, sessionId),
@@ -95,13 +91,11 @@ export async function saveResponse(
   );
 
   if (existingResponse) {
-    // Update existing response
     await db
       .update(response)
       .set(responseData)
       .where(eq(response.id, existingResponse.id));
   } else {
-    // Create new response
     const responseId = crypto.randomUUID();
     await db.insert(response).values({
       id: responseId,
@@ -110,7 +104,6 @@ export async function saveResponse(
     });
   }
 
-  // Update session updatedAt
   await db
     .update(assessmentSession)
     .set({ updatedAt: now })
@@ -136,7 +129,6 @@ export async function saveResponsesBatch(
     userId: string;
   },
 ) {
-  // Verify session ownership
   const session = await db.query.assessmentSession.findFirst({
     where: eq(assessmentSession.id, sessionId),
   });
@@ -158,13 +150,15 @@ export async function saveResponsesBatch(
     throw new Error("Session missing questionnaire version");
   }
 
-  // Get all items for this version to validate questions
+  if (responses.length === 0) {
+    throw new Error("Cannot save empty responses array");
+  }
+
   const items = await db.query.questionnaireItem.findMany({
     where: eq(questionnaireItem.questionnaireVersionId, questionnaireVersionId),
   });
   const validQuestionIds = new Set(items.map((i) => i.questionId));
 
-  // Get all questions to determine types
   const questions = await db.query.questionBankItem.findMany({
     where: inArray(
       questionBankItem.id,
@@ -177,76 +171,75 @@ export async function saveResponsesBatch(
   let savedCount = 0;
   const failed: { questionId: string; error: string }[] = [];
 
-  // Process sequentially to ensure consistency (could be optimized with transactions/batch inserts)
-  for (const resp of responses) {
-    try {
-      if (!validQuestionIds.has(resp.questionId)) {
-        throw new Error(
-          "Question does not belong to this session's questionnaire",
+  return db.transaction(async (tx) => {
+    for (const resp of responses) {
+      try {
+        if (!validQuestionIds.has(resp.questionId)) {
+          throw new Error(
+            "Question does not belong to this session's questionnaire",
+          );
+        }
+
+        const question = questionsMap.get(resp.questionId);
+        if (!question) {
+          throw new Error("Question not found");
+        }
+
+        const responseData = mapResponseValueToData(
+          question.questionTypeCode,
+          {
+            value: resp.value,
+            selectedOptionId: resp.selectedOptionId,
+            selectedOptionIds: resp.selectedOptionIds,
+          },
+          {
+            assessmentSessionId: sessionId,
+            questionId: resp.questionId,
+            updatedAt: now,
+          },
         );
-      }
 
-      const question = questionsMap.get(resp.questionId);
-      if (!question) {
-        throw new Error("Question not found");
-      }
+        const existingResponse = await tx.query.response.findFirst({
+          where: and(
+            eq(response.assessmentSessionId, sessionId),
+            eq(response.questionId, resp.questionId),
+          ),
+        });
 
-      const responseData = mapResponseValueToData(
-        question.questionTypeCode,
-        {
-          value: resp.value,
-          selectedOptionId: resp.selectedOptionId,
-          selectedOptionIds: resp.selectedOptionIds,
-        },
-        {
-          assessmentSessionId: sessionId,
+        if (existingResponse) {
+          await tx
+            .update(response)
+            .set(responseData)
+            .where(eq(response.id, existingResponse.id));
+        } else {
+          const responseId = crypto.randomUUID();
+          await tx.insert(response).values({
+            id: responseId,
+            ...responseData,
+            createdAt: now,
+          });
+        }
+
+        savedCount++;
+      } catch (error) {
+        failed.push({
           questionId: resp.questionId,
-          updatedAt: now,
-        },
-      );
-
-      // Check for existing response
-      const existingResponse = await db.query.response.findFirst({
-        where: and(
-          eq(response.assessmentSessionId, sessionId),
-          eq(response.questionId, resp.questionId),
-        ),
-      });
-
-      if (existingResponse) {
-        await db
-          .update(response)
-          .set(responseData)
-          .where(eq(response.id, existingResponse.id));
-      } else {
-        const responseId = crypto.randomUUID();
-        await db.insert(response).values({
-          id: responseId,
-          ...responseData,
-          createdAt: now,
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-
-      savedCount++;
-    } catch (error) {
-      failed.push({
-        questionId: resp.questionId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
     }
-  }
 
-  // Update session updatedAt
-  await db
-    .update(assessmentSession)
-    .set({ updatedAt: now })
-    .where(eq(assessmentSession.id, sessionId));
+    await tx
+      .update(assessmentSession)
+      .set({ updatedAt: now })
+      .where(eq(assessmentSession.id, sessionId));
 
-  return {
-    success: failed.length === 0,
-    savedCount,
-    failed: failed.length > 0 ? failed : undefined,
-  };
+    return {
+      success: failed.length === 0,
+      savedCount,
+      failed: failed.length > 0 ? failed : undefined,
+    };
+  });
 }
 
 export async function getResponsesBySession(
@@ -264,7 +257,6 @@ export async function getAggregatedResponses(
   questionnaireId: string,
   userId: string,
 ) {
-  // Get active version for this questionnaire
   const activeVersion = await db.query.questionnaireVersion.findFirst({
     where: and(
       eq(questionnaireVersion.questionnaireId, questionnaireId),
@@ -281,7 +273,6 @@ export async function getAggregatedResponses(
     };
   }
 
-  // Get user's own completed sessions for this questionnaire version
   const userSessions = await db
     .select({
       id: assessmentSession.id,
@@ -311,7 +302,6 @@ export async function getAggregatedResponses(
     };
   }
 
-  // Get responses from user's own sessions only
   const userResponses = await db
     .select()
     .from(response)
@@ -329,7 +319,6 @@ export async function getModelResponses(
   db: typeof DbInstance,
   questionnaireId: string,
 ) {
-  // Get active version and model profiles
   const allModelProfilesResult = await db
     .select()
     .from(subjectProfile)
@@ -368,7 +357,6 @@ export async function getModelResponses(
     };
   }
 
-  // Get all completed sessions for this questionnaire version from AI/LLM models
   const modelSessions = await db
     .select({
       id: assessmentSession.id,
@@ -393,7 +381,6 @@ export async function getModelResponses(
     };
   }
 
-  // Get all responses from model sessions
   const modelResponses = await db
     .select()
     .from(response)

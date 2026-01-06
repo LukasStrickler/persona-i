@@ -1,12 +1,15 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import {
+  createTestDatabase,
+  closeTestDatabase,
+  type TestDatabase,
+} from "@/test-utils/db";
 import { questionnairesRouter } from "../questionnaires";
 import type { createTRPCContext } from "@/server/api/trpc";
 import {
   questionnaire,
   questionnaireVersion,
   userQuestionnaireAccess,
-  subjectProfile,
   assessmentSession,
   user,
 } from "@/server/db/schema";
@@ -18,7 +21,7 @@ describe("Questionnaires Router", () => {
   let caller: ReturnType<typeof questionnairesRouter.createCaller>;
 
   beforeEach(async () => {
-    // Create a fresh database for each test (matches Eilbote-Website pattern)
+    // Create a fresh database for each test (matches isolated test pattern)
     db = await createTestDatabase();
 
     // Create user (required for foreign keys)
@@ -31,7 +34,7 @@ describe("Questionnaires Router", () => {
       updatedAt: new Date(),
     });
 
-    // Mock context - use Awaited to match the actual return type
+    // Mock context - cast through unknown for test flexibility
     const ctx = {
       db,
       session: {
@@ -46,8 +49,12 @@ describe("Questionnaires Router", () => {
         name: "Test User",
         email: "test@example.com",
       },
-    } as Awaited<ReturnType<typeof createTRPCContext>>;
+    } as unknown as Awaited<ReturnType<typeof createTRPCContext>>;
     caller = questionnairesRouter.createCaller(ctx);
+  });
+
+  afterEach(async () => {
+    await closeTestDatabase(db);
   });
 
   it("should get public questionnaires", async () => {

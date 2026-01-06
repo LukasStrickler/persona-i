@@ -219,6 +219,7 @@ export function SpringSlider({
       {/* Track */}
       <div
         ref={trackRef}
+        data-testid="slider-track"
         className="bg-secondary/50 relative z-10 h-1.5 w-full grow cursor-pointer overflow-hidden rounded-full"
       >
         {/* Fill */}

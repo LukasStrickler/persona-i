@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import {
+  createTestDatabase,
+  closeTestDatabase,
+  type TestDatabase,
+} from "@/test-utils/db";
 import {
   questionnaire,
   questionnaireVersion,
@@ -7,7 +11,6 @@ import {
   subjectProfile,
   questionBankItem,
   questionnaireItem,
-  response,
   questionType,
   user,
 } from "@/server/db/schema";
@@ -21,7 +24,7 @@ describe("Response Queries", () => {
   let db: TestDatabase;
 
   beforeEach(async () => {
-    // Create a fresh database for each test (matches Eilbote-Website pattern)
+    // Create a fresh database for each test (matches isolated test pattern)
     db = await createTestDatabase();
 
     // Seed required question types
@@ -56,6 +59,10 @@ describe("Response Queries", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+  });
+
+  afterEach(async () => {
+    await closeTestDatabase(db);
   });
 
   it("should save a single response", async () => {

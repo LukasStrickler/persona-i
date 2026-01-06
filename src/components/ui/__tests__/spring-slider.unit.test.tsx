@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SpringSlider } from "../spring-slider";
 
-// Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   observe() {}
@@ -44,14 +43,13 @@ describe("SpringSlider", () => {
       />,
     );
 
-    // Wait for component to fully render and width to be set
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Find the track container (the div that handles pointer events)
-    const trackContainer = container.querySelector("div[class*='relative']")!;
+    const trackContainer = container.querySelector(
+      '[data-testid="slider-track"]',
+    )!;
     expect(trackContainer).toBeTruthy();
 
-    // Mock getBoundingClientRect
     const rect = {
       left: 0,
       top: 0,
@@ -68,13 +66,11 @@ describe("SpringSlider", () => {
       rect as DOMRect,
     );
 
-    // Simulate a click on the track (75% of the way, should give us ~75)
     fireEvent.pointerDown(trackContainer, {
-      clientX: 75, // 75% of the way
+      clientX: 75,
       clientY: 10,
     });
 
-    // Both handlers should be called
     expect(handleChange).toHaveBeenCalled();
     expect(handleCommit).toHaveBeenCalled();
   });

@@ -3,6 +3,7 @@ import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { unlink } from "node:fs/promises";
 
 import * as schema from "@/server/db/schema";
 import { getTestDatabaseToken, getTestDatabaseUrl } from "./db-config";
@@ -10,40 +11,19 @@ import { getTestDatabaseToken, getTestDatabaseUrl } from "./db-config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../");
 
-export type TestDatabase = LibSQLDatabase<typeof schema> & { $client: Client };
+export type TestDatabase = LibSQLDatabase<typeof schema> & {
+  $client: Client;
+  $dbPath: string | null;
+};
 
 /**
- * Creates a fresh in-memory SQLite database for testing.
- * Each call returns a completely isolated database instance with migrations already applied.
- *
- * **Isolation Pattern:**
- * - Uses `:memory:` (not `file::memory:`) for proper isolation
- * - Each call creates a NEW, isolated in-memory database
- * - Migrations are automatically applied before returning
- * - Use in `beforeEach` hook for complete test isolation
- *
- * **Usage:**
- * ```typescript
- * describe("My Tests", () => {
- *   let db: TestDatabase;
- *
- *   beforeEach(async () => {
- *     db = await createTestDatabase(); // Fresh DB with migrations applied
- *   });
- *
- *   it("should test something", async () => {
- *     // Use db here - it's a fresh, isolated database
- *   });
- * });
- * ```
- *
- * @returns A Drizzle database instance with migrations applied and client attached
+ * Creates a fresh SQLite database for testing with migrations applied.
+ * Each call returns a completely isolated database instance.
  */
 export async function createTestDatabase(): Promise<TestDatabase> {
   const url = getTestDatabaseUrl();
   const token = getTestDatabaseToken();
 
-  // Use ":memory:" for proper isolation (matches Eilbote-Website pattern)
   const client = createClient({
     url,
     authToken: token || undefined,
@@ -51,12 +31,28 @@ export async function createTestDatabase(): Promise<TestDatabase> {
 
   const db = drizzle(client, { schema }) as TestDatabase;
 
-  // Attach client to db for cleanup
   db.$client = client;
+  // Extract file path from URL for cleanup (e.g., "file:/path/to/db" -> "/path/to/db")
+  db.$dbPath = url.startsWith("file:") ? url.slice(5) : null;
 
-  // Run migrations to ensure schema is applied before returning
   const migrationsPath = path.resolve(projectRoot, "src/server/db/_migrations");
   await migrate(db, { migrationsFolder: migrationsPath });
 
   return db;
+}
+
+/**
+ * Closes the database client and cleans up temp files.
+ * Must be called in afterEach to prevent resource leaks.
+ */
+export async function closeTestDatabase(db: TestDatabase): Promise<void> {
+  db.$client.close();
+
+  if (db.$dbPath) {
+    try {
+      await unlink(db.$dbPath);
+    } catch {
+      // File may already be deleted or never created
+    }
+  }
 }

@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createTestDatabase, type TestDatabase } from "@/test-utils/db";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import {
+  createTestDatabase,
+  closeTestDatabase,
+  type TestDatabase,
+} from "@/test-utils/db";
 import {
   questionnaire,
   questionnaireVersion,
@@ -22,7 +26,7 @@ describe("Questionnaire Queries", () => {
   let db: TestDatabase;
 
   beforeEach(async () => {
-    // Create a fresh database for each test (matches Eilbote-Website pattern)
+    // Create a fresh database for each test (matches isolated test pattern)
     db = await createTestDatabase();
 
     // Seed required question types
@@ -55,6 +59,10 @@ describe("Questionnaire Queries", () => {
         },
       ])
       .onConflictDoNothing();
+  });
+
+  afterEach(async () => {
+    await closeTestDatabase(db);
   });
 
   it("should get public questionnaires with active versions", async () => {
@@ -171,8 +179,7 @@ describe("Questionnaire Queries", () => {
     expect(result).not.toBeNull();
     expect(result?.id).toBe(qId);
     expect(result?.version.id).toBe(vId);
-    // Should not have items property (it's metadata only)
-    expect((result as any).items).toBeUndefined();
+    expect("items" in (result ?? {})).toBe(false);
   });
 
   it("should get user accessible private questionnaires", async () => {

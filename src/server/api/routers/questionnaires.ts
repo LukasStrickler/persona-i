@@ -138,10 +138,6 @@ export const questionnairesRouter = createTRPCRouter({
         throw new Error("Questionnaire not found");
       }
 
-      if (!q.activeVersion) {
-        throw new Error("No active version found for this questionnaire");
-      }
-
       // Check if user has access (public or private access)
       if (!q.isPublic) {
         // Check private access
@@ -249,5 +245,45 @@ export const questionnairesRouter = createTRPCRouter({
         ...input,
         userId: ctx.user.id,
       });
+    }),
+
+  /**
+   * Complete a session
+   */
+  completeSession: protectedProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return sessionQueries.completeSession(
+        ctx.db,
+        input.sessionId,
+        ctx.user.id,
+      );
+    }),
+
+  /**
+   * Get incomplete sessions for the current user for a specific questionnaire
+   */
+  getIncompleteSessions: protectedProcedure
+    .input(z.object({ questionnaireId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return sessionQueries.getIncompleteSessions(
+        ctx.db,
+        input.questionnaireId,
+        ctx.user.id,
+      );
+    }),
+
+  /**
+   * Get user's session IDs and metadata for a questionnaire
+   * Lightweight endpoint for cache invalidation checks
+   */
+  getUserSessionIds: protectedProcedure
+    .input(z.object({ questionnaireId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return sessionQueries.getUserSessionIds(
+        ctx.db,
+        input.questionnaireId,
+        ctx.user.id,
+      );
     }),
 });
